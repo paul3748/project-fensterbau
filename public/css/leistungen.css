@@ -1,0 +1,152 @@
+/* =========================
+   Leistungen-Seite Styling
+   ========================= */
+
+.leistungen-container {
+  max-width: 1000px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.leistungen-container h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+  text-align: center;
+}
+
+.leistungen-container h2 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: var(--color-secondary);
+  text-align: center;
+}
+/* Tabelle */
+.table-leistungen {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+
+.table-leistungen th,
+.table-leistungen td {
+  padding: 1rem 1.2rem;
+  text-align: left;
+}
+
+.table-leistungen th {
+  background-color: var(--color-primary);
+  color: white;
+  font-weight: 600;
+}
+
+.table-leistungen tr:nth-child(even) {
+  background-color: #f8fafc; /* leichtes Grau für Abwechslung */
+}
+
+.table-leistungen tr:hover {
+  background-color: #e8f1f7; /* sanfter Hover-Effekt */
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Erste Spalte mit Icon */
+.table-leistungen td:first-child {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.table-leistungen td:first-child::before {
+  content: "🔧"; /* Standard-Icon */
+  font-size: 1.1rem;
+}
+
+.weitere-leistungen {
+  max-width: 1000px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.weitere-leistungen h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+  text-align: center;
+}
+
+.weitere-leistungen ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.weitere-leistungen li {
+  background: white;
+  margin-bottom: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  position: relative;
+  padding-left: 2.5rem;
+  transition: background 0.2s ease-in-out;
+}
+
+.weitere-leistungen li::before {
+  content: " ✔️"; /* Standard-Icon */
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+}
+
+.weitere-leistungen li:hover {
+  background-color: #e8f1f7;
+}
+
+/* Responsive Tabelle */
+@media (max-width: 768px) {
+  .table-leistungen thead {
+    display: none; /* Header ausblenden */
+  }
+  
+  .table-leistungen, 
+  .table-leistungen tbody, 
+  .table-leistungen tr, 
+  .table-leistungen td {
+    display: block;
+    width: 100%;
+  }
+  
+  .table-leistungen tr {
+    margin-bottom: 1rem;
+    background: white;
+    border-radius: 6px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  
+  .table-leistungen td {
+    padding: 0.5rem 1rem;
+    position: relative;
+    padding-left: 2.5rem;
+  }
+  
+  .table-leistungen td:first-child {
+    font-weight: bold;
+    padding-left: 2.5rem;
+  }
+  
+  .table-leistungen td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+  }
+}

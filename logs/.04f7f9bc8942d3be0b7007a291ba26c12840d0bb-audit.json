@@ -1,0 +1,65 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "D:\\projekt-root\\logs\\.04f7f9bc8942d3be0b7007a291ba26c12840d0bb-audit.json",
+    "files": [
+        {
+            "date": 1756479125560,
+            "name": "D:\\projekt-root\\logs\\error-2025-08-29.log",
+            "hash": "482b57b5d18db22023038a4bb7aafd442c0812b10ded571d79dccbe288c73465"
+        },
+        {
+            "date": 1756545436314,
+            "name": "D:\\projekt-root\\logs\\error-2025-08-30.log",
+            "hash": "5a22fbac8d641025e372d4589222621dc533aacd375587b0a9db6ff6d224ec60"
+        },
+        {
+            "date": 1756627922391,
+            "name": "D:\\projekt-root\\logs\\error-2025-08-31.log",
+            "hash": "ce0077d88b946c9d6a3786f1a288b11e0e5f3654ef7739a662078bcb97c1d4ac"
+        },
+        {
+            "date": 1756748137826,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-01.log",
+            "hash": "abfaa17c2f2856a07fdb72bcf5bbc4ea977a79baea2563b48c2b4c8d06dbe03d"
+        },
+        {
+            "date": 1756835073479,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-02.log",
+            "hash": "8b4a3bb872839e446b4820e8447b33039d3c3adc20d1d492f76173ee2de01c76"
+        },
+        {
+            "date": 1756915703748,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-03.log",
+            "hash": "278d8094b56da689150c25db7ad7757b2a7ed84c0df1780d382c4e12d2a93ae9"
+        },
+        {
+            "date": 1757263721429,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-07.log",
+            "hash": "63e785c9a2015219be9fa5e01e7fd65a7e812d2b57a996abaa5fc1ed253c1c8d"
+        },
+        {
+            "date": 1757342884387,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-08.log",
+            "hash": "bb6f6fdb0107c9feb4335e0c13e2d9b86433a90064be3def79802a68e2ded7bf"
+        },
+        {
+            "date": 1757434649725,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-09.log",
+            "hash": "da670e9135f7f43e18b47f22956de2eb35f31b2b786524d10f860409bfa58cd0"
+        },
+        {
+            "date": 1757606552523,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-11.log",
+            "hash": "9d6c3b44583f3e57d94efe3a6bc89319a37e82f32df63c70e51b7cca1fd45820"
+        },
+        {
+            "date": 1757785404127,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-13.log",
+            "hash": "0dd9ed13fcf9b83d2c7e22d4247b6139ced7f8f1e81f32a329b31d03a2e0c04e"
+        }
+    ],
+    "hashType": "sha256"
+}

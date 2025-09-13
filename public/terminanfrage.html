@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="de" class="page-terminanfrage">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WBJ Fenster- & Schließtechnik – Terminanfrage</title>
+
+  <!-- Globales, minimalistisches Design -->
+  <link rel="stylesheet" href="/css/style.css" />
+  <!-- Seite-spezifisch -->
+  <link rel="stylesheet" href="/css/terminanfrage.css" />
+</head>
+<body>
+  <header>
+    <img src="/assets/logo.png" alt="WBJ Fenster- & Schließtechnik" class="logo" />
+
+    <!-- Mobile Toggle -->
+    <button class="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Menü öffnen">
+      ☰
+    </button>
+
+    <div class="slogan flex-1 text-center">
+      <span>Sicher. Modern. Zuverlässig.</span>
+    </div>
+
+    <nav id="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/home.html" class="navigation-link">Home</a></li>
+        <li><a href="/leistungen.html" class="navigation-link">Leistungen</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- WICHTIG: layout-two-col aktivieren -->
+  <main class="container layout-two-col">
+    <div class="content">
+      <h1 class="mt-0">Terminanfrage</h1>
+      <h3>Ihr Anliegen ist uns wichtig – vereinbaren Sie bequem einen Termin.</h3>
+
+      <section class="card">
+        <h2 class="mt-0">Kontaktieren Sie uns</h2>
+        <p>Wenn Sie Fragen oder Anliegen haben, zögern Sie nicht, uns zu kontaktieren. Unser Team steht Ihnen jederzeit zur Verfügung.</p>
+
+        <div class="mb-6 mt-10">
+        <div class="anfrageart-toggle">
+            <input type="radio" name="anfrageart" id="option-vor-ort" value="vorOrt" checked>
+            <label for="option-vor-ort">Vor Ort</label>
+
+            <input type="radio" name="anfrageart" id="option-telefonisch" value="telefonisch">
+            <label for="option-telefonisch">Telefonisch</label>
+        </div>
+        </div>
+
+
+        <form id="terminFormular" novalidate>
+          <div class="form-overlay" aria-hidden="true">
+            <div class="spinner" role="status" aria-label="Wird gesendet …"></div>
+          </div>
+
+          <div id="formStatus" class="alert hidden" role="status"></div>
+
+          <section>
+            <h2>Ihr Anliegen</h2>
+            <p>Wählen Sie aus, bei welchem Problem wir Ihnen behilflich sein können.</p>
+
+            <div id="problemContainer">
+              <table>
+                <tr class="problem-container">
+                  <td><label for="Fenster">Fenster</label></td>
+                    <td>
+                    <select name="Fenster" id="Fenster" class="problem-select">
+                      <option value="0">0</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                      <option value="13">13</option>
+                      <option value="14">14</option>
+                      <option value="15">15</option>
+                      <option value="16">16</option>
+                      <option value="17">17</option>
+                      <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                    </select>
+                    </td>
+                  </tr>
+                  <tr class="problem-container">
+                    <td><label for="Tueren">Türen</label></td>
+                    <td>
+                    <select name="Tueren" id="Tueren" class="problem-select">
+                      <option value="0">0</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                      <option value="13">13</option>
+                      <option value="14">14</option>
+                      <option value="15">15</option>
+                      <option value="16">16</option>
+                      <option value="17">17</option>
+                      <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                    </select>
+                    </td>
+                  </tr>
+                  <tr class="problem-container">
+                    <td><label for="Rolladen">Rollläden</label></td>
+                    <td>
+                    <select name="Rolladen" id="Rolladen" class="problem-select">
+                      <option value="0">0</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                      <option value="13">13</option>
+                      <option value="14">14</option>
+                      <option value="15">15</option>
+                      <option value="16">16</option>
+                      <option value="17">17</option>
+                      <option value="18">18</option>
+                      <option value="19">19</option>
+                      <option value="20">20</option>
+                    </select>
+                    </td>
+                  </tr>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2>Beschreibung</h2>
+            <p>Bitte beschreiben Sie Ihr Anliegen so genau wie möglich.</p>
+            <textarea id="beschreibung" name="beschreibung" rows="4" cols="50" required></textarea>
+          </section>
+
+          <section id="terminAbschnitt">
+            <h2>Terminvorschläge</h2>
+            <p>Bitte wählen Sie genau 3 passende Termine aus:</p>
+
+            <div class="week-navigation">
+              <button type="button" id="prevWeek" class="nav-btn">←</button>
+              <div id="currentWeek"></div>
+              <button type="button" id="nextWeek" class="nav-btn">→</button>
+            </div>
+
+            <div class="tage-grid week-grid"></div>
+
+            <p id="auswahlMeldung" class="form-error"></p>
+          </section>
+
+          <section>
+            <h2>Kontaktdaten</h2>
+            <p>Bitte geben Sie Ihre Kontaktdaten an, damit wir Sie erreichen können.</p>
+            <table class="kontakt-tabelle">
+              <tr>
+                <td><label for="nachname">Nachname:*</label></td>
+                <td><input type="text" id="nachname" name="nachname" required></td>
+              </tr>
+              <tr>
+                <td><label for="vorname">Vorname:*</label></td>
+                <td><input type="text" id="vorname" name="vorname" required></td>
+              </tr>
+              <tr>
+                <td><label for="kundennummer">Kundennummer:</label></td>
+                <td><input type="text" id="kundennummer" name="kundennummer"></td>
+              </tr>
+              <tr>
+                <td><label for="firma">ggf. Firma:</label></td>
+                <td><input type="text" id="firma" name="firma"></td>
+              </tr>
+              <tr>
+                <td><label for="adresse">Straße, Hausnr.:*</label></td>
+                <td><input type="text" id="adresse" name="adresse" required></td>
+              </tr>
+              <tr>
+                <td><label for="plz">PLZ:*</label></td>
+                <td><input type="text" id="plz" name="plz" required></td>
+              </tr>
+              <tr>
+                <td><label for="ort">Ort:*</label></td>
+                <td><input type="text" id="ort" name="ort" required></td>
+              </tr>
+              <tr>
+                <td><label for="e-mail">E-Mail:*</label></td>
+                <td><input type="email" id="e-mail" name="e-mail" required></td>
+              </tr>
+              <tr>
+                <td><label for="telefon">Telefon:*</label></td>
+                <td><input type="tel" id="telefon" name="telefon" required></td>
+              </tr>
+            </table>
+          </section>
+          <section>
+            <input type="checkbox" id="datenschutz" name="datenschutz" required>
+            <label for="datenschutz">
+              Ich habe die <a href="/datenschutz.html" target="_blank">Datenschutzerklärung</a> gelesen 
+              und stimme der Verarbeitung meiner Daten für die Terminvereinbarung zu.*
+            </label>
+          </section>
+          <button type="submit">Absenden</button>
+
+          <p class="form-hint mb-0">* Pflichtfelder</p>
+          <p id="meldung" class="form-error"></p>
+        </form>
+      </section>
+    </div>
+  </main>
+  <footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-section">
+      <h4>Kontakt</h4>
+      <p>WBJ Fenster- & Schließtechnik<br>
+      Musterstraße 12, 12345 Musterstadt</p>
+      <p><strong>Telefon:</strong> 0123 456789<br>
+      <strong>E-Mail:</strong> support@firma.de</p>
+    </div>
+
+    <div class="footer-section">
+      <h4>Links</h4>
+      <ul>
+        <li><a href="/home.html">Home</a></li>
+        <li><a href="/leistungen.html">Leistungen</a></li>
+        <li><a href="/terminanfrage.html">Terminanfrage</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-section">
+      <h4>Rechtliches</h4>
+      <ul>
+        <li><a href="/impressum.html">Impressum</a></li>
+        <li><a href="/datenschutz.html">Datenschutz</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2025 WBJ Fenster- & Schließtechnik. Alle Rechte vorbehalten.</p>
+  </div>
+</footer>
+
+  <script src="/js/terminanfrage.js"></script>
+  <script src="/js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Adminanfragen</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-900">
+
+<header class="bg-blue-900 text-white px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+  <h1 class="text-xl font-semibold">Adminanfragen</h1>
+  <div class="flex items-center gap-2">
+  <select id="filterTyp" class="bg-white text-black px-2 py-1 rounded border">
+    <option value="alle">Alle Typen</option>
+    <option value="telefon">Telefonanfragen</option>
+    <option value="vorort">Vor-Ort-Termine</option>
+  </select>
+
+  <select id="filterStatus" class="bg-white text-black px-2 py-1 rounded border">
+    <option value="neu">Neue</option>
+    <option value="bearbeitet">Bearbeitet</option>
+  </select>
+
+  <button onclick="logout()" class="bg-gray-700 px-4 py-1 rounded hover:bg-gray-600 ml-4">Logout</button>
+</div>
+</header>
+
+<main class="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6" id="anfrageContainer">
+</main>
+
+<script src="/js/admin.js"></script>
+
+</body>
+</html>

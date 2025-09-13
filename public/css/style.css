@@ -1,0 +1,225 @@
+/* =========================
+   Grundlegendes Layout
+   ========================= */
+:root {
+  --color-bg: #f7f8fa; /* sehr helles Grau */
+  --color-text: #1f2d3d; 
+  --color-primary: #2e6f9f; /* Blau passend zum Logo */
+  --color-secondary: #4a4a4a; /* helleres Grau für Akzente */
+  --color-hover: #1b4f70;
+  --font-main: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  background: linear-gradient(180deg, #f5f5f5 0%, #ffffff 100%);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+/* =========================
+   Header & Navigation
+   ========================= */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 2rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid #d1d5da;
+}
+header img.logo {
+  height: 6.5rem;
+  width: auto;
+}
+
+/* Slogan Gestaltung */
+/* Slogan schlicht, klar und hochwertig */
+header .slogan {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: 0.1rem;
+  color: #1f2d3d;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+nav a {
+  text-decoration: none;
+  color: var(--color-text);
+  font-weight: 500;
+  transition: color 0.2s ease-in-out;
+}
+
+nav a:hover {
+  color: var(--color-primary);
+}
+
+/* ---------- Footer Global ---------- */
+.site-footer {
+  background: #1f2933;
+  color: #f1f5f9;
+  font-size: 0.95rem;
+  padding: 2.5rem 0 0;
+  margin-top: 4rem;
+}
+
+.site-footer a {
+  color: #f1f5f9;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.site-footer a:hover {
+  color: var(--color-primary, #2e6f9f);
+}
+
+.footer-inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.footer-section h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+}
+
+.footer-section p,
+.footer-section li {
+  margin: 0.25rem 0;
+  line-height: 1.5;
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+  padding: 1rem 0;
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+/* =========================
+   Responsive Design Header & Footer
+   ========================= */
+
+/* Mobile Devices: max-width 768px */
+@media (max-width: 768px) {
+
+  /* Header anpassen */
+  header {
+    flex-direction: row;       /* Logo links, Button rechts */
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    position: relative;
+  }
+
+  /* Slogan ausblenden */
+  header .slogan {
+    display: none;
+  }
+
+  .menu-toggle {
+    width: 40px;
+    height: 40px;
+    background: #f0f0f0; /* heller, neutraler Grauton */
+    color: var(--color-primary); /* Symbolfarbe passend zum Logo */
+    border: 1px solid #ccc; /* leichte Umrandung */
+    border-radius: 8px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+    margin-left: auto; /* schiebt den Button weiter rechts */
+  }
+
+  .menu-toggle:hover {
+    background: #e0e0e0; /* dezenter Hover-Effekt */
+  }
+
+  /* Navigation vertikal und versteckt */
+  nav ul {
+    flex-direction: column;
+    width: 100%;
+    background: var(--color-bg);
+    position: absolute;
+    top: 100%;
+    right: 0;
+    padding: 0;
+    display: none; /* Standard: ausgeblendet */
+    z-index:100%;
+  }
+
+  nav ul.active {
+    display: flex;
+  }
+
+  nav ul li {
+    width: 100%;
+    text-align: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #dbe1e7;
+  }
+
+  /* Menü-Button sichtbar */
+  .menu-toggle {
+    display: block;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    border: none;
+    background: none;
+  }
+
+  /* Footer: mehr Abstand und Reihenfolge untereinander */
+  .footer-inner {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 0 1rem;
+  }
+
+  .footer-section h4 {
+    font-size: 1rem;
+  }
+
+  .footer-section p,
+  .footer-section li {
+    font-size: 0.9rem;
+  }
+
+  .footer-bottom {
+    font-size: 0.8rem;
+  }
+}
+
+/* Größere Bildschirme */
+@media (min-width: 769px) {
+  .menu-toggle {
+    display: none;
+  }
+}

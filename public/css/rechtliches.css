@@ -1,0 +1,170 @@
+/* =========================
+   Farb- & Font-Variablen
+   ========================= */
+:root {
+  --color-bg: #f7f8fa;        /* Sehr helles Grau */
+  --color-text: #1f2d3d;      /* Standard-Textfarbe */
+  --color-primary: #2e6f9f;   /* Blau passend zum Logo */
+  --color-secondary: #4a4a4a; /* Hellere Grautöne für Akzente */
+  --color-hover: #1b4f70;     /* Dunkleres Blau für Hover-Effekte */
+  --font-main: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+}
+
+/* === Hauptcontainer === */
+main {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 40px;
+  background-color: #fff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  font-family: var(--font-main);
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+/* === Hauptüberschrift === */
+main h1 {
+  font-size: 2.2rem;
+  text-align: center;
+  color: var(--color-primary);
+  margin-bottom: 25px;
+  border-bottom: 3px solid var(--color-primary);
+  padding-bottom: 8px;
+}
+
+/* === Unterüberschriften === */
+main h2 {
+  font-size: 1.7rem;
+  margin-top: 40px;
+  margin-bottom: 15px;
+  color: var(--color-primary);
+  border-left: 5px solid var(--color-primary);
+  padding-left: 12px;
+}
+
+main h3 {
+  font-size: 1.3rem;
+  margin-top: 25px;
+  margin-bottom: 8px;
+  color: var(--color-hover);
+  font-weight: 600;
+}
+
+main h4 {
+  font-size: 1.1rem;
+  margin-top: 20px;
+  margin-bottom: 6px;
+  color: var(--color-secondary);
+  font-weight: 600;
+}
+
+/* === Absatz-Text === */
+main p {
+  margin-bottom: 16px;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+/* === Listen === */
+main ul {
+  margin: 10px 0 20px 25px;
+  padding-left: 15px;
+}
+
+main ul li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+  font-size: 1rem;
+  color: var(--color-text);
+  position: relative;
+  padding-left: 6px;
+}
+
+/* === Links === */
+main a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease-in-out;
+}
+
+main a:hover {
+  color: var(--color-hover);
+  text-decoration: underline;
+}
+
+/* === Tabellen === */
+main table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 25px 0;
+  font-size: 1rem;
+  background-color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+main table th,
+main table td {
+  padding: 12px 15px;
+  border: 1px solid #e1e1e1;
+  text-align: left;
+}
+
+main table th {
+  background-color: var(--color-bg);
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* === Hervorgehobene Boxen === */
+main .highlight {
+  background-color: #eef7fd;
+  border-left: 5px solid var(--color-primary);
+  padding: 12px 15px;
+  margin: 15px 0;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+/* === Zitat-Blöcke === */
+main blockquote {
+  background-color: var(--color-bg);
+  padding: 12px 15px;
+  margin: 15px 0;
+  border-left: 4px solid var(--color-primary);
+  font-style: italic;
+  color: var(--color-secondary);
+}
+
+/* === Responsives Design === */
+@media (max-width: 768px) {
+  main {
+    padding: 20px;
+    margin: 20px;
+  }
+
+  main h1 {
+    font-size: 1.8rem;
+  }
+
+  main h2 {
+    font-size: 1.4rem;
+  }
+
+  main h3 {
+    font-size: 1.2rem;
+  }
+
+  main p,
+  main ul li {
+    font-size: 0.95rem;
+  }
+
+  main table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

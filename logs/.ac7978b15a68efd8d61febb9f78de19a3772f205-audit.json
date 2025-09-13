@@ -1,0 +1,55 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "D:\\projekt-root\\logs\\.ac7978b15a68efd8d61febb9f78de19a3772f205-audit.json",
+    "files": [
+        {
+            "date": 1756627922389,
+            "name": "D:\\projekt-root\\logs\\app-2025-08-31.log",
+            "hash": "8765eceac76ded2e0a451329d14eaaaef7b35a4c450d2dd274d569b76443c0e6"
+        },
+        {
+            "date": 1756748132586,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-01.log",
+            "hash": "57402d6b7cd7649d5b6e32a837df59dbe45514b9713a94118a780dd3411be32b"
+        },
+        {
+            "date": 1756835073478,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-02.log",
+            "hash": "21707a89d3ce8d8a95e5ae5df30ca955c39856b4e52ddec776af54975478e65c"
+        },
+        {
+            "date": 1756915703747,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-03.log",
+            "hash": "027d9083749cb0f7a8503778cf4d1fa696dad52db1167f9104521122878d6cc7"
+        },
+        {
+            "date": 1757263721424,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-07.log",
+            "hash": "6674dce3ac1908e1d5e689e516db8d21342f2ebce2530711140283d2e9282783"
+        },
+        {
+            "date": 1757342884382,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-08.log",
+            "hash": "3a0d655e12d2385bfbbfd6e996432edaf0033466a3dfa7190c9996599aaf7913"
+        },
+        {
+            "date": 1757434649721,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-09.log",
+            "hash": "1df084831c84e61ae12088dda4bea4fe3c5f3debfdd4d7369e977a91b87c9c74"
+        },
+        {
+            "date": 1757606552519,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-11.log",
+            "hash": "a369d49d7b264903232e919778c67fec3fb7f0567a1a53ae36364d42e9020d0f"
+        },
+        {
+            "date": 1757785404106,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-13.log",
+            "hash": "8b904ab4e3a4c1c476ac25ba45991791543111af97d1d99d53362d5656e4f021"
+        }
+    ],
+    "hashType": "sha256"
+}

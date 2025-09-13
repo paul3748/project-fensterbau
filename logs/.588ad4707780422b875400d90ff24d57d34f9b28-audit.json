@@ -1,0 +1,65 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "D:\\projekt-root\\logs\\.588ad4707780422b875400d90ff24d57d34f9b28-audit.json",
+    "files": [
+        {
+            "date": 1756479125553,
+            "name": "D:\\projekt-root\\logs\\security-2025-08-29.log",
+            "hash": "eb89ba56dc1692ce9f2e8a4f5db7bda1071110ff6d336af6d0fec81ffa23f483"
+        },
+        {
+            "date": 1756545436306,
+            "name": "D:\\projekt-root\\logs\\security-2025-08-30.log",
+            "hash": "005b16d51df6114bc82479147f178aadeeef121abd1f1e2d5aaa944c281edc65"
+        },
+        {
+            "date": 1756627922379,
+            "name": "D:\\projekt-root\\logs\\security-2025-08-31.log",
+            "hash": "1d66da3150a0666ebeaf132734dab2cce30c13d55d33a88b4435d8888beaba37"
+        },
+        {
+            "date": 1756748137823,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-01.log",
+            "hash": "048ea73962332fea6debfcd98ec8bd68c9e8f9eeb173a4ecf190e739619303fe"
+        },
+        {
+            "date": 1756835073475,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-02.log",
+            "hash": "e20def12d316289965b550d597098efd9f5576b757f8853e83be73da3770205f"
+        },
+        {
+            "date": 1756915703731,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-03.log",
+            "hash": "acada44cd3b4807a2fbcd65cb63c1c86b6e049a44247a37407179d017b3e1a7f"
+        },
+        {
+            "date": 1757263721389,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-07.log",
+            "hash": "f3e4a4d879b014c680ba42e816326846a07d221a1a41404d56d6ea7a0c4592bf"
+        },
+        {
+            "date": 1757342884372,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-08.log",
+            "hash": "6550f3c8881de14aef98f6b7e930b96c5dfdd319864f44f9464728abd50840d0"
+        },
+        {
+            "date": 1757434649713,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-09.log",
+            "hash": "dfa47fe1119a6a3e3c618d65a9323c426c9faa55fd7a493f2a262437e6cb5637"
+        },
+        {
+            "date": 1757606552512,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-11.log",
+            "hash": "cd1c97065edc0917e53a4d87f38544e7d09055e1c6886f8c764e01c57c5a3c98"
+        },
+        {
+            "date": 1757785404087,
+            "name": "D:\\projekt-root\\logs\\security-2025-09-13.log",
+            "hash": "301740b28c027cb745c985b7aed89999d0720a7f6e631c07aca4b69064ca5b17"
+        }
+    ],
+    "hashType": "sha256"
+}

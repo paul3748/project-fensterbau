@@ -1,0 +1,40 @@
+main {
+  max-width: 900px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  text-align: center;
+  line-height: 1.7;
+}
+
+main h1 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-primary, #004c99);
+}
+
+
+main p {
+  font-size: 1.15rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-text, #333);
+}
+
+/* Call-to-Action */
+.cta-button {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--color-primary, #0066cc), var(--color-hover, #004c99));
+  color: #fff;
+  padding: 0.9rem 1.8rem;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transition: all 0.25s ease-in-out;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, var(--color-hover, #004c99), var(--color-primary, #0066cc));
+}
