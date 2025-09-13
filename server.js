@@ -1,4 +1,4 @@
-// server.js - FIXED VERSION with proper CSP, Session & CSRF handling
+// server.js - UPDATED VERSION mit differenzierter Routensicherheit
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
@@ -12,6 +12,15 @@ const {
   sqlInjectionProtection,
   csrfProtection
 } = require('./middleware/security');
+
+// ✅ NEUE Sicherheits-Middleware importieren
+const {
+  routeSecurityMiddleware,
+  requireAdminAuth,
+  apiSecurityMiddleware,
+  debugRouteMiddleware
+} = require('./middleware/routeSecurity');
+
 const {
   setupSessionStore,
   createSessionMiddleware,
@@ -29,7 +38,7 @@ let server;
 // ---------------------- Security Middleware ----------------------
 app.set('trust proxy', 1);
 
-// FIXED: CSP erlaubt externe CDN-Ressourcen für Admin-Bereich
+// CSP mit erlaubten externen Ressourcen
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -58,6 +67,7 @@ app.use(
   })
 );
 
+// Zusätzliche Security Headers
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -67,29 +77,72 @@ app.use((req, res, next) => {
   next();
 });
 
+// HTTPS Redirect
 app.use((req, res, next) => {
   const forwarded = req.headers['x-forwarded-proto'];
-  if (forwarded && forwarded !== 'https') {
+  if (process.env.NODE_ENV === 'production' && forwarded && forwarded !== 'https') {
     logSecurityEvent('HTTP_TO_HTTPS_REDIRECT', req);
     return res.redirect(301, `https://${req.headers.host}${req.url}`);
   }
   next();
 });
 
-// ---------------------- Rate Limiting - FIXED ----------------------
-const strictLimiter = createAdvancedRateLimit({ windowMs: 15*60*1000, max: 100 }); // Erhöht von 50 auf 100
-const loginLimiter = createAdvancedRateLimit({ windowMs: 15*60*1000, max: 5, skipSuccessfulRequests:true }); // Erhöht von 3 auf 5
-const anfrageFormLimiter = createAdvancedRateLimit({ windowMs: 30*60*1000, max: 5 }); // Erhöht von 2 auf 5
-
-// FIXED: Separates Rate Limiting für Admin-API-Calls
-const adminApiLimiter = createAdvancedRateLimit({ 
+// ---------------------- Rate Limiting ----------------------
+const publicLimiter = createAdvancedRateLimit({ 
   windowMs: 15*60*1000, 
-  max: 200, // Hoch für Admin-Bereich
-  skipSuccessfulRequests: true 
+  max: 200, // Erhöht für öffentliche Endpunkte
+  message: 'Zu viele Anfragen von dieser IP'
 });
 
-// Global Rate Limiting
-app.use(strictLimiter);
+const strictLimiter = createAdvancedRateLimit({ 
+  windowMs: 15*60*1000, 
+  max: 100,
+  message: 'Rate Limit erreicht - bitte warten Sie'
+});
+
+const loginLimiter = createAdvancedRateLimit({ 
+  windowMs: 15*60*1000, 
+  max: 5, 
+  skipSuccessfulRequests: true,
+  message: 'Zu viele Login-Versuche'
+});
+
+const anfrageFormLimiter = createAdvancedRateLimit({ 
+  windowMs: 30*60*1000, 
+  max: 10, // Erhöht für Terminanfragen
+  message: 'Zu viele Terminanfragen von dieser IP'
+});
+
+const adminApiLimiter = createAdvancedRateLimit({ 
+  windowMs: 15*60*1000, 
+  max: 300, // Hoch für Admin-Bereich
+  skipSuccessfulRequests: true,
+  message: 'Admin Rate Limit erreicht'
+});
+
+// Rate Limiting basierend auf Route-Typ
+app.use((req, res, next) => {
+  // Login-Endpunkte
+  if (req.path === '/login' && req.method === 'POST') {
+    return loginLimiter(req, res, next);
+  }
+  
+  // Terminanfrage-Endpunkte
+  if ((req.path === '/anfrage' && req.method === 'POST') || 
+      req.path.startsWith('/outlook/freie-slots')) {
+    return anfrageFormLimiter(req, res, next);
+  }
+  
+  // Admin-Endpunkte
+  if (req.path.startsWith('/admin') || 
+      (req.path.startsWith('/outlook') && req.method !== 'GET') ||
+      (req.path.startsWith('/anfrage') && req.method !== 'POST')) {
+    return adminApiLimiter(req, res, next);
+  }
+  
+  // Standard Rate Limiting für alle anderen
+  return publicLimiter(req, res, next);
+});
 
 // ---------------------- Body Parser ----------------------
 app.use(express.json({ limit:'1mb' }));
@@ -105,7 +158,6 @@ app.use(express.static(path.join(__dirname,'public'), {
   }
 }));
 
-// FIXED: Zusätzlicher Static-Ordner für Admin-Views
 app.use('/views', express.static(path.join(__dirname,'views'), {
   maxAge: '1d'
 }));
@@ -121,25 +173,24 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
     app.use(createSessionMiddleware(sessionStore));
     console.log('✅ Session Store erfolgreich eingerichtet');
 
-    // Session-Debugging nur im Development
+    // ✅ DEBUG Middleware (nur in Development)
     if (process.env.NODE_ENV === 'development') {
-      app.use((req, res, next) => {
-        if (!req.path.match(/\.(js|css|png|jpg|ico)$/) && !req.path.includes('favicon')) {
-          console.log('🔋 Session Debug:', {
-            path: req.path,
-            sessionID: req.sessionID?.substring(0, 8) + '...',
-            isNew: req.session?.isNew,
-            hasUser: !!req.session?.user,
-            sessionKeys: Object.keys(req.session || {}).filter(k => k !== 'cookie')
-          });
-        }
-        next();
-      });
+      app.use(debugRouteMiddleware);
     }
 
+    // ✅ SQL Injection Protection
     app.use(sqlInjectionProtection);
 
+    // ✅ API Security Middleware
+    app.use('/api', apiSecurityMiddleware);
+    app.use('/outlook', apiSecurityMiddleware);
+    app.use('/anfrage', apiSecurityMiddleware);
+
+    // ✅ HAUPTSICHERHEITS-MIDDLEWARE - Entscheidet über Zugriffskontrolle
+    app.use(routeSecurityMiddleware);
+
     // ---------------------- CSRF Token Endpoint ----------------------
+    // ✅ Bereits als öffentliche Route definiert, keine zusätzliche Authentifizierung nötig
     app.get('/csrf-token', (req, res) => {
       console.log('🔐 CSRF Token Request:', {
         path: req.path,
@@ -148,7 +199,6 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       });
 
       if (!req.session?.csrfToken) {
-        console.log('❌ Kein CSRF Token - Generiere neuen');
         const newToken = crypto.randomBytes(32).toString('hex');
         req.session.csrfToken = newToken;
 
@@ -157,177 +207,201 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
             console.error('❌ Fehler beim Speichern der Session:', err);
             return res.status(500).json({ success: false, message: 'Session-Fehler' });
           }
-          console.log('✅ Neuer CSRF Token gespeichert:', newToken.substring(0, 8) + '...');
-          res.json({ csrfToken: newToken });
+          console.log('✅ Neuer CSRF Token gespeichert');
+          res.json({ csrfToken: newToken, sessionId: req.sessionID?.substring(0, 8) + '...' });
         });
       } else {
-        console.log('✅ Existierender Token gefunden:', String(req.session.csrfToken).substring(0, 8) + '...');
-        res.json({ csrfToken: String(req.session.csrfToken) });
+        console.log('✅ Existierender Token gefunden');
+        res.json({ 
+          csrfToken: String(req.session.csrfToken),
+          sessionId: req.sessionID?.substring(0, 8) + '...'
+        });
       }
     });
 
-// ---------------------- Routes - FIXED Order ----------------------
+    // ---------------------- Routes ----------------------
     
-    // Login-Seite (öffentlich)
+    // ✅ Hauptseite - Terminanfrage-Formular (ÖFFENTLICH)
+    app.get('/', (req, res) => {
+      console.log('📝 Hauptseite aufgerufen von:', req.ip);
+      res.sendFile(path.join(__dirname, 'public', 'terminanfrage.html'));
+    });
+
+    // ✅ Login-Bereich (ÖFFENTLICH)
     app.get('/login', (req, res) => {
+      // Wenn bereits eingeloggt, zum Admin weiterleiten
+      if (req.session?.user?.role === 'admin') {
+        return res.redirect('/admin');
+      }
       res.sendFile(path.join(__dirname, 'views', 'login.html'));
     });
 
-    // Login POST - Verwende den AuthController direkt
-    app.post('/login', loginLimiter, csrfProtection, async (req, res) => {
+    // ✅ Login POST (ÖFFENTLICH, aber mit CSRF-Schutz)
+    app.post('/login', csrfProtection, async (req, res) => {
       const { login } = require('./controllers/authController');
       await login(req, res);
     });
 
-// ---------------------- Geschützte Admin-Routen ----------------------
-    
-    // Admin-Bereich mit Authentifizierung
+    // ✅ Logout (ÖFFENTLICH)
+    app.post('/logout', (req, res) => {
+      const { logout } = require('./controllers/authController');
+      logout(req, res);
+    });
+
+    // ✅ Admin-Dashboard (GESCHÜTZT - wird automatisch durch routeSecurityMiddleware geprüft)
     app.get('/admin', (req, res) => {
-      console.log('Admin Access Check (ausführlich):', {
-        hasUser: !!req.session?.user,
-        userRole: req.session?.user?.role,
-        sessionID: req.sessionID?.substring(0, 8) + '...',
-        sessionKeys: Object.keys(req.session || {}),
-        sessionUser: req.session?.user,
-        cookies: req.headers.cookie?.substring(0, 50) + '...'
-      });
-      
-      if (!req.session?.user || req.session.user.role !== 'admin') {
-        console.log('Admin Access Denied - Grund:', {
-          noSession: !req.session?.user,
-          wrongRole: req.session?.user?.role !== 'admin',
-          actualRole: req.session?.user?.role
-        });
-        return res.redirect('/login');
-      }
-      
-      console.log('Admin Access Granted');
+      // Sicherheitsprüfung erfolgt bereits durch routeSecurityMiddleware
+      console.log('📊 Admin-Dashboard Zugriff:', req.session.user.username);
       res.sendFile(path.join(__dirname, 'views', 'admin.html'));
     });
 
-// ---------------------- Granulare API-Sicherheit ----------------------
-    
-    // Admin-Authentifizierung
-    const requireAdminAuth = (req, res, next) => {
-      console.log('Admin Auth Check:', {
-        path: req.path,
-        method: req.method,
-        hasUser: !!req.session?.user,
-        userRole: req.session?.user?.role
+    // ✅ API-Routen mit automatischer Sicherheitsprüfung
+    // Die routeSecurityMiddleware entscheidet automatisch, welche Endpunkte öffentlich/geschützt sind
+
+    // Outlook-Routes
+    app.use('/outlook', outlookRoutes);
+
+    // Anfrage-Routes  
+    app.use('/anfrage', anfrageRoutes);
+
+    // Auth-Routes
+    app.use('/', authRoutes);
+
+    // ✅ Health Check (ÖFFENTLICH)
+    app.get('/health', (req, res) => {
+      res.status(200).json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
       });
-
-      if (!req.session?.user || req.session.user.role !== 'admin') {
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Authentifizierung erforderlich',
-          requiresLogin: true
-        });
-      }
-      next();
-    };
-
-    // ---------------------- ÖFFENTLICHE API-Routen (für Terminanfrage-Formular) ----------------------
-    
-    // Verfügbare Zeitslots abrufen - ÖFFENTLICH
-    app.get('/outlook/available-slots', anfrageFormLimiter, (req, res, next) => {
-      console.log('Öffentliche Zeitslot-Abfrage von:', req.ip);
-      // Weiterleitung an Outlook-Route ohne Admin-Check
     });
-
-    // Neue Terminanfrage erstellen - ÖFFENTLICH  
-    app.post('/anfrage', anfrageFormLimiter, (req, res, next) => {
-      console.log('Öffentliche Terminanfrage-Erstellung von:', req.ip);
-      // Weiterleitung ohne Admin-Check
-    });
-
-    // ---------------------- GESCHÜTZTE API-Routen (nur für Admin) ----------------------
-    
-    // Alle Outlook-Routen AUSSER available-slots sind geschützt
-    app.use('/outlook', (req, res, next) => {
-      // Ausnahme: available-slots ist öffentlich
-      if (req.path === '/available-slots' && req.method === 'GET') {
-        console.log('Öffentlicher Zugriff auf available-slots erlaubt');
-        return next();
-      }
-      
-      // Alle anderen Outlook-Routen erfordern Admin-Auth
-      console.log('Geschützter Outlook-Endpunkt:', req.path);
-      return requireAdminAuth(req, res, next);
-    }, adminApiLimiter, outlookRoutes);
-
-    // Alle Anfrage-Routen AUSSER POST / sind geschützt
-    app.use('/anfrage', (req, res, next) => {
-      // Ausnahme: POST /anfrage ist öffentlich (neue Anfrage erstellen)
-      if (req.path === '/' && req.method === 'POST') {
-        console.log('Öffentliche Anfrage-Erstellung erlaubt');
-        return next();
-      }
-      
-      // Alle anderen Anfrage-Routen erfordern Admin-Auth
-      console.log('Geschützter Anfrage-Endpunkt:', req.method, req.path);
-      return requireAdminAuth(req, res, next);
-    }, adminApiLimiter, anfrageRoutes);
-
-    // Admin-Bereich
-    app.get('/admin', (req, res) => {
-      if (!req.session?.user || req.session.user.role !== 'admin') {
-        return res.redirect('/login');
-      }
-      res.sendFile(path.join(__dirname, 'views', 'admin.html'));
-    });
-
-    // Hauptseite (öffentlich)
-    app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, 'public', 'terminanfrage.html'));
-    });
-    // Health Check
-    app.get('/health', (req, res) => res.status(200).json({ 
-      status:'OK', 
-      timestamp: new Date().toISOString() 
-    }));
 
     // ---------------------- Error Handling ----------------------
-    app.use((err, req, res, next) => {
-      if (res.headersSent) return next(err);
-      const errorId = crypto.randomBytes(16).toString('hex');
-      console.error('❌ Server Error:', { errorId, message: err.message, stack: err.stack });
-      
-      // Bei JSON-Requests JSON-Antwort
-      if (req.headers['content-type']?.includes('application/json') || req.path.startsWith('/api')) {
-        return res.status(500).json({ success: false, message: 'Interner Server-Fehler', errorId });
+    
+    // ✅ Route Not Found Handler
+    app.use('*', (req, res) => {
+      // Statische Dateien nicht loggen
+      if (!req.originalUrl.match(/\.(js|css|png|jpg|ico|map|svg|woff|woff2|ttf|eot)$/)) {
+        console.log('🔍 404 Not Found:', req.method, req.originalUrl);
+        logSecurityEvent('404_NOT_FOUND', req, {
+          attemptedPath: req.originalUrl,
+          userAgent: req.headers['user-agent']
+        });
       }
       
-      res.status(500).send('Interner Server-Fehler');
+      // JSON-Response für API-Calls
+      if (req.headers['content-type']?.includes('application/json') || 
+          req.originalUrl.startsWith('/api') || 
+          req.originalUrl.startsWith('/outlook') || 
+          req.originalUrl.startsWith('/anfrage')) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Endpunkt nicht gefunden',
+          path: req.originalUrl
+        });
+      }
+      
+      // HTML-Response für Browser
+      res.status(404).send(`
+        <html>
+          <head><title>Seite nicht gefunden</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+            <h1>404 - Seite nicht gefunden</h1>
+            <p>Die angeforderte Seite existiert nicht.</p>
+            <a href="/">Zurück zur Startseite</a>
+          </body>
+        </html>
+      `);
     });
 
-    app.use((req, res) => {
-      if (!req.path.match(/\.(js|css|png|jpg|ico|map)$/)) {
-        console.log('🔍 404 Not Found:', req.method, req.path);
-        logSecurityEvent('404_NOT_FOUND', req);
+    // ✅ Global Error Handler
+    app.use((err, req, res, next) => {
+      if (res.headersSent) return next(err);
+      
+      const errorId = crypto.randomBytes(16).toString('hex');
+      
+      // CSRF-Fehler speziell behandeln
+      if (err.code === 'EBADCSRFTOKEN') {
+        console.log('❌ CSRF Token Fehler:', {
+          errorId,
+          path: req.path,
+          sessionID: req.sessionID?.substring(0, 8) + '...',
+          hasSession: !!req.session
+        });
+        
+        logSecurityEvent('CSRF_TOKEN_INVALID', req, { errorId });
+        
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+          return res.status(403).json({ 
+            success: false, 
+            message: 'CSRF-Token ungültig oder fehlt',
+            code: 'CSRF_INVALID',
+            errorId
+          });
+        }
+        
+        return res.redirect('/login?message=csrf_error');
       }
       
-      if (req.headers['content-type']?.includes('application/json') || req.path.startsWith('/api')) {
-        return res.status(404).json({ success:false, message:'Ressource nicht gefunden' });
+      // Allgemeine Fehler
+      console.error('❌ Server Error:', { 
+        errorId, 
+        message: err.message, 
+        stack: err.stack,
+        path: req.path,
+        method: req.method
+      });
+      
+      logSecurityEvent('SERVER_ERROR', req, {
+        errorId,
+        error: err.message,
+        stack: err.stack
+      });
+      
+      // JSON-Response für API-Calls
+      if (req.xhr || req.headers.accept?.includes('application/json') || req.path.startsWith('/api')) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Interner Server-Fehler', 
+          errorId 
+        });
       }
       
-      res.status(404).send('Seite nicht gefunden');
+      // HTML-Response für Browser
+      res.status(500).send(`
+        <html>
+          <head><title>Server Fehler</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
+            <h1>500 - Server Fehler</h1>
+            <p>Ein unerwarteter Fehler ist aufgetreten.</p>
+            <p>Fehler-ID: ${errorId}</p>
+            <a href="/">Zurück zur Startseite</a>
+          </body>
+        </html>
+      `);
     });
 
     // ---------------------- Server Start ----------------------
     server = app.listen(port, () => {
       console.log(`✅ Server läuft auf Port ${port}`);
-      console.log(`🌐 Frontend: http://localhost:${port}`);
-      console.log(`🔒 CSRF Protection: Aktiv`);
-      console.log(`📊 Session Store: PostgreSQL`);
-      console.log(`🛡️ CSP: Externe CDNs erlaubt für Admin`);
+      console.log(`🌐 Terminanfrage: http://localhost:${port}`);
+      console.log(`🔒 Admin-Login: http://localhost:${port}/login`);
+      console.log(`📊 Admin-Dashboard: http://localhost:${port}/admin`);
+      console.log(`🛡️ Differenzierte Routensicherheit: Aktiv`);
+      console.log(`📝 Öffentliche Endpunkte: Terminformular, CSRF, Slot-Abfrage`);
+      console.log(`🔐 Geschützte Endpunkte: Admin-Dashboard, Anfrage-Management`);
     });
 
   } catch (err) {
     console.error('❌ Fehler beim Start:', err);
     console.log('📄 Fallback auf Memory-Session...');
     
+    // Fallback-Session für Development
     app.use(createFallbackSession());
-
+    
+    // Minimale Route-Sicherheit im Fallback-Mode
+    app.use(routeSecurityMiddleware);
+    
     app.get('/csrf-token', (req, res) => {
       if (!req.session.csrfToken) {
         req.session.csrfToken = crypto.randomBytes(32).toString('hex');
@@ -341,6 +415,7 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
 
     server = app.listen(port, () => {
       console.log(`⚠️ Server läuft auf Port ${port} (Fallback-Mode)`);
+      console.log(`🛡️ Routensicherheit: Reduziert (Memory-Session)`);
     });
   }
 })();
@@ -366,5 +441,15 @@ process.on('SIGINT', () => {
   }
 });
 
-module.exports = app;
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  logSecurityEvent('UNCAUGHT_EXCEPTION', { ip: 'system' }, { error: err.message, stack: err.stack });
+  process.exit(1);
+});
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  logSecurityEvent('UNHANDLED_REJECTION', { ip: 'system' }, { reason, promise: promise.toString() });
+});
+
+module.exports = app;

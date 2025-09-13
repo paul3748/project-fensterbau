@@ -1,3 +1,4 @@
+// config/session.js - Korrigiert mit createFallbackSession
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const crypto = require('crypto');
@@ -50,4 +51,32 @@ function createSessionMiddleware(store) {
     });
 }
 
-module.exports = { setupSessionStore, createSessionMiddleware };
+// ✅ FIXED: Fehlende createFallbackSession Funktion hinzugefügt
+function createFallbackSession() {
+    const MemoryStore = require('express-session').MemoryStore;
+    
+    console.log('⚠️ Verwende Memory-Session als Fallback');
+    
+    return session({
+        secret: process.env.SESSION_SECRET || 'fallback-secret-nur-development',
+        store: new MemoryStore(),
+        name: 'sid',
+        resave: false,
+        saveUninitialized: false,
+        rolling: true,
+        genid: () => crypto.randomBytes(32).toString('hex'),
+        cookie: {
+            maxAge: 2 * 60 * 60 * 1000, // 2 Stunden
+            secure: false, // Im Fallback-Mode nie HTTPS erzwingen
+            httpOnly: true,
+            sameSite: 'lax'
+        }
+    });
+}
+
+// ✅ FIXED: Export erweitert
+module.exports = { 
+    setupSessionStore, 
+    createSessionMiddleware, 
+    createFallbackSession 
+};
