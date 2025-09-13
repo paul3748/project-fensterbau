@@ -227,25 +227,60 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       res.sendFile(path.join(__dirname, 'public', 'terminanfrage.html'));
     });
 
-    // ✅ Login-Bereich (ÖFFENTLICH)
+    // In server.js - Ersetze den Login-Bereich mit diesem Code:
+
+    // ✅ Login-Bereich (ÖFFENTLICH) - UPDATED
     app.get('/login', (req, res) => {
       // Wenn bereits eingeloggt, zum Admin weiterleiten
       if (req.session?.user?.role === 'admin') {
+        console.log('↪️ Bereits eingeloggt - Weiterleitung zu Admin:', req.session.user.username);
         return res.redirect('/admin');
       }
+      
+      console.log('🔑 Login-Seite aufgerufen von:', req.ip);
       res.sendFile(path.join(__dirname, 'views', 'login.html'));
     });
 
-    // ✅ Login POST (ÖFFENTLICH, aber mit CSRF-Schutz)
+    // ✅ Login POST (ÖFFENTLICH, aber mit CSRF-Schutz) - UPDATED
     app.post('/login', csrfProtection, async (req, res) => {
-      const { login } = require('./controllers/authController');
-      await login(req, res);
+      try {
+        console.log('🔐 Login-Versuch:', {
+          username: req.body.username,
+          ip: req.ip,
+          hasCSRF: !!req.headers['x-csrf-token'] || !!req.body._csrf
+        });
+        
+        const { login } = require('./controllers/authController');
+        await login(req, res);
+        
+      } catch (error) {
+        console.error('❌ Login-Route Fehler:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Login-Fehler aufgetreten'
+        });
+      }
     });
 
-    // ✅ Logout (ÖFFENTLICH)
+    // ✅ Logout (ÖFFENTLICH) - UPDATED  
     app.post('/logout', (req, res) => {
-      const { logout } = require('./controllers/authController');
-      logout(req, res);
+      try {
+        console.log('👋 Logout:', {
+          userId: req.session?.user?.id,
+          username: req.session?.user?.username,
+          ip: req.ip
+        });
+        
+        const { logout } = require('./controllers/authController');
+        logout(req, res);
+        
+      } catch (error) {
+        console.error('❌ Logout-Fehler:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Logout-Fehler aufgetreten'
+        });
+      }
     });
 
     // ✅ Admin-Dashboard (GESCHÜTZT - wird automatisch durch routeSecurityMiddleware geprüft)
