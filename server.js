@@ -1,4 +1,4 @@
-// server.js - UPDATED VERSION mit differenzierter Routensicherheit
+// server.js - FIXED VERSION für Express 5 Kompatibilität
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
@@ -227,9 +227,7 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       res.sendFile(path.join(__dirname, 'public', 'terminanfrage.html'));
     });
 
-    // In server.js - Ersetze den Login-Bereich mit diesem Code:
-
-    // ✅ Login-Bereich (ÖFFENTLICH) - UPDATED
+    // ✅ Login-Bereich (ÖFFENTLICH)
     app.get('/login', (req, res) => {
       // Wenn bereits eingeloggt, zum Admin weiterleiten
       if (req.session?.user?.role === 'admin') {
@@ -241,7 +239,7 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       res.sendFile(path.join(__dirname, 'views', 'login.html'));
     });
 
-    // ✅ Login POST (ÖFFENTLICH, aber mit CSRF-Schutz) - UPDATED
+    // ✅ Login POST (ÖFFENTLICH, aber mit CSRF-Schutz)
     app.post('/login', csrfProtection, async (req, res) => {
       try {
         console.log('🔐 Login-Versuch:', {
@@ -262,7 +260,7 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       }
     });
 
-    // ✅ Logout (ÖFFENTLICH) - UPDATED  
+    // ✅ Logout (ÖFFENTLICH)
     app.post('/logout', (req, res) => {
       try {
         console.log('👋 Logout:', {
@@ -313,8 +311,9 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
 
     // ---------------------- Error Handling ----------------------
     
-    // ✅ Route Not Found Handler
-    app.use('*', (req, res) => {
+    // ❌ FIXED: Express 5 kompatible Wildcard-Route
+    // Statt app.use('*', ...) verwenden wir app.all('*', ...)
+    app.use((req, res, next) => {
       // Statische Dateien nicht loggen
       if (!req.originalUrl.match(/\.(js|css|png|jpg|ico|map|svg|woff|woff2|ttf|eot)$/)) {
         console.log('🔍 404 Not Found:', req.method, req.originalUrl);

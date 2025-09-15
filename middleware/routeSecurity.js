@@ -1,4 +1,4 @@
-// middleware/routeSecurity.js - Differenzierte Routensicherheit
+// middleware/routeSecurity.js - Express 5 kompatible Version
 
 const crypto = require('crypto');
 const { logger, logSecurityEvent } = require('../utils/logger');
@@ -22,6 +22,7 @@ const PUBLIC_ROUTES = {
   // Login-Bereich
   'GET:/login': true,                         // Login-Seite anzeigen
   'POST:/login': true,                        // Login durchführen
+  'POST:/logout': true,                       // Logout durchführen
 };
 
 /**
@@ -31,25 +32,35 @@ const PUBLIC_ROUTES = {
 const ADMIN_PROTECTED_ROUTES = {
   // Admin Dashboard
   'GET:/admin': true,
-  'GET:/admin/*': true,
+  // ❌ FIXED: Entferne problematische Wildcard-Patterns
+  // 'GET:/admin/*': true,  // <- Das verursacht den path-to-regexp Fehler
   
   // Anfrage-Management (Admin-Funktionen)
   'GET:/anfrage': true,                       // Alle Anfragen auflisten
-  'PUT:/anfrage/*': true,                     // Anfrage status ändern
-  'DELETE:/anfrage/*': true,                  // Anfrage löschen
-  'GET:/anfrage/*': true,                     // Einzelne Anfrage abrufen
+  // ❌ FIXED: Spezifische Routen statt Wildcards
+  // 'PUT:/anfrage/*': true,                  // <- Problematisch
+  // 'DELETE:/anfrage/*': true,               // <- Problematisch  
+  // 'GET:/anfrage/*': true,                  // <- Problematisch
   
   // Outlook Admin-Funktionen
   'GET:/outlook/events': true,                // Alle Kalenderereignisse
   'POST:/outlook/events': true,               // Kalendereintrag erstellen
-  'PUT:/outlook/events/*': true,              // Kalendereintrag bearbeiten
-  'DELETE:/outlook/events/*': true,           // Kalendereintrag löschen
+  'GET:/outlook/test': true,                  // Test-Route
+  'GET:/outlook/health': true,                // Health Check
+  // ❌ FIXED: Spezifische Routen statt Wildcards
+  // 'PUT:/outlook/events/*': true,           // <- Problematisch
+  // 'DELETE:/outlook/events/*': true,        // <- Problematisch
   
   // Benutzer-Management
   'GET:/users': true,
   'POST:/users': true,
-  'PUT:/users/*': true,
-  'DELETE:/users/*': true,
+  // ❌ FIXED: Entferne Wildcard-Patterns
+  // 'PUT:/users/*': true,                    // <- Problematisch
+  // 'DELETE:/users/*': true,                 // <- Problematisch
+  
+  // Statistiken und Export
+  'GET:/anfrage/stats/overview': true,
+  'GET:/anfrage/export/csv': true,
 };
 
 /**
@@ -63,15 +74,8 @@ function isPublicRoute(method, path) {
     return true;
   }
   
-  // Wildcard-Patterns prüfen
-  for (const publicRoute in PUBLIC_ROUTES) {
-    if (publicRoute.endsWith('*')) {
-      const baseRoute = publicRoute.slice(0, -1);
-      if (routeKey.startsWith(baseRoute)) {
-        return true;
-      }
-    }
-  }
+  // ❌ REMOVED: Problematische Wildcard-Logik entfernt
+  // Stattdessen: String-basierte Präfix-Prüfung
   
   // Statische Dateien (JS, CSS, Bilder, etc.)
   if (method === 'GET' && path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map)$/)) {
@@ -92,18 +96,28 @@ function requiresAdminAuth(method, path) {
     return true;
   }
   
-  // Wildcard-Patterns prüfen
-  for (const protectedRoute in ADMIN_PROTECTED_ROUTES) {
-    if (protectedRoute.endsWith('*')) {
-      const baseRoute = protectedRoute.slice(0, -1);
-      if (routeKey.startsWith(baseRoute)) {
-        return true;
-      }
-    }
-  }
-  
+  // ❌ FIXED: String-basierte Präfix-Prüfung statt Wildcard-Regex
   // Admin-Pfade standardmäßig schützen
   if (path.startsWith('/admin')) {
+    return true;
+  }
+  
+  // Anfrage-Management Routen (mit ID-Parameter)
+  if (path.startsWith('/anfrage/') && ['GET', 'PUT', 'DELETE', 'POST'].includes(method)) {
+    // Ausnahme für öffentliche POST-Route
+    if (method === 'POST' && path === '/anfrage') {
+      return false;
+    }
+    return true;
+  }
+  
+  // Outlook-Admin Routen (mit eventId-Parameter)  
+  if (path.startsWith('/outlook/events/') && ['PUT', 'DELETE', 'PATCH'].includes(method)) {
+    return true;
+  }
+  
+  // User-Management Routen (mit ID-Parameter)
+  if (path.startsWith('/users/') && ['PUT', 'DELETE', 'PATCH'].includes(method)) {
     return true;
   }
   

@@ -1,13 +1,9 @@
-// routes/authRoutes.js - FIXED VERSION ohne csurf
+// routes/authRoutes.js - FIXED VERSION
 const express = require('express');
 const path = require('path');
 const router = express.Router();
 const { login, checkLogin, logout } = require('../controllers/authController');
 const { csrfProtection } = require('../middleware/security');
-
-// ❌ PROBLEM: csurf wurde entfernt - verwende stattdessen die custom csrfProtection
-// const csrf = require('csurf');
-// const csrfProtection = csrf({ cookie: false });
 
 // Login-Seite anzeigen (ÖFFENTLICH)
 router.get('/login', (req, res) => {

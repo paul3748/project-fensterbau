@@ -1,5 +1,9 @@
 function escapeHTML(str) {
-  return str.replace(/[&<>"']/g, match => ({
+  // ✅ FIXED: Prüfung auf undefined/null
+  if (str === null || str === undefined) {
+    return '';
+  }
+  return String(str).replace(/[&<>"']/g, match => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   }[match]));
 }
@@ -9,7 +13,26 @@ let belegteOutlookSlots = [];
 async function ladeBelegteOutlookSlots() {
   try {
     const res = await fetch('/outlook/events');
-    const events = await res.json();
+    const data = await res.json();
+
+    // ✅ FIXED: Bessere Fehlerbehandlung für Outlook API
+    console.log('📅 Outlook API Response:', data);
+
+    // Falls der Server ein Fehler-Objekt zurückgibt
+    if (!data.success && data.events) {
+      console.log('⚠️ Server-Warnung:', data.message);
+      belegteOutlookSlots = [];
+      return;
+    }
+
+    // Falls data direkt ein Array ist
+    const events = Array.isArray(data) ? data : (data.events || []);
+
+    if (!Array.isArray(events)) {
+      console.warn('⚠️ Events ist kein Array:', events);
+      belegteOutlookSlots = [];
+      return;
+    }
 
     belegteOutlookSlots = events.map(ev => {
       const startRaw = ev.start?.dateTime || ev.start;
@@ -22,10 +45,11 @@ async function ladeBelegteOutlookSlots() {
       return { start, end };
     });
 
-    console.log('✅ Belegte Outlook-Slots geladen:', belegteOutlookSlots);
+    console.log('✅ Belegte Outlook-Slots geladen:', belegteOutlookSlots.length);
 
   } catch (err) {
     console.error('⚠ Outlook Slots konnten nicht geladen werden:', err);
+    belegteOutlookSlots = []; // ✅ Fallback auf leeres Array
   }
 }
 
@@ -49,6 +73,7 @@ async function ladeAnfragen() {
   const anfragen = await res.json();
   const container = document.getElementById('anfrageContainer');
   container.innerHTML = '';
+  
   const gefilterteAnfragen = anfragen.filter(anfrage => {
     if (typFilter === 'telefon' && !anfrage.istTelefonanfrage) return false;
     if (typFilter === 'vorort' && anfrage.istTelefonanfrage) return false;
@@ -74,34 +99,60 @@ async function ladeAnfragen() {
     const left = document.createElement('section');
     left.className = "md:col-span-2";
 
+    // ✅ ICONS - Komplett ohne innerHTML
     const icons = document.createElement('div');
     icons.className = "mb-2 flex gap-4";
-    icons.innerHTML = `
-    <span>🚪 Türen: ${problem?.Tueren ?? 0}</span>
-    <span>🪟 Fenster: ${problem?.Fenster ?? 0}</span>
-    <span>🎛️ Rolladen: ${problem?.Rolladen ?? 0}</span>
-      ${istTelefonanfrage ? '<span class="ml-auto text-sm px-2 py-1 bg-yellow-200 text-yellow-800 rounded">📞 Telefontermin</span>' : ''}
-    `;
+    
+    const tuerenSpan = document.createElement('span');
+    tuerenSpan.textContent = `🚪 Türen: ${problem?.Tueren ?? 0}`;
+    icons.appendChild(tuerenSpan);
+    
+    const fensterSpan = document.createElement('span');
+    fensterSpan.textContent = `🪟 Fenster: ${problem?.Fenster ?? 0}`;
+    icons.appendChild(fensterSpan);
+    
+    const rolladenSpan = document.createElement('span');
+    rolladenSpan.textContent = `🎛️ Rolladen: ${problem?.Rolladen ?? 0}`;
+    icons.appendChild(rolladenSpan);
+    
+    if (istTelefonanfrage) {
+      const telefonSpan = document.createElement('span');
+      telefonSpan.className = "ml-auto text-sm px-2 py-1 bg-yellow-200 text-yellow-800 rounded";
+      telefonSpan.textContent = "📞 Telefontermin";
+      icons.appendChild(telefonSpan);
+    }
+    
     left.appendChild(icons);
 
+    // ✅ NACHRICHT - Ohne innerHTML
     const nachricht = document.createElement('p');
     nachricht.className = "mb-4";
-    nachricht.innerHTML = `<strong>Nachricht:</strong><br>${escapeHTML(beschreibung || '')}`;
+    const nachrichtBold = document.createElement('strong');
+    nachrichtBold.textContent = "Nachricht:";
+    nachricht.appendChild(nachrichtBold);
+    nachricht.appendChild(document.createElement('br'));
+    nachricht.appendChild(document.createTextNode(escapeHTML(beschreibung || '')));
     left.appendChild(nachricht);
 
+    // ✅ KONTAKT - Komplett ohne innerHTML
     const kontaktDiv = document.createElement('div');
     kontaktDiv.className = "grid md:grid-cols-2 gap-2 text-sm";
+    
     const felder = [
-      ["Name", `${kontakt.vorname} ${kontakt.nachname}`],
-      ["Kundennummer", kontakt.kundennummer || 'Keine Angabe'],
-      ["Firma", kontakt.firma || 'Keine Angabe'],
-      ["Email", kontakt.email],
-      ["Adresse", `${kontakt.adresse} ${kontakt.plz} ${kontakt.ort}`],
-      ["Telefon", kontakt.telefon]
+      ["Name", `${kontakt?.vorname || ''} ${kontakt?.nachname || ''}`],
+      ["Kundennummer", kontakt?.kundennummer || 'Keine Angabe'],
+      ["Firma", kontakt?.firma || 'Keine Angabe'],
+      ["Email", kontakt?.email || 'Keine Angabe'],
+      ["Adresse", `${kontakt?.adresse || ''} ${kontakt?.plz || ''} ${kontakt?.ort || ''}`],
+      ["Telefon", kontakt?.telefon || 'Keine Angabe']
     ];
+    
     felder.forEach(([label, wert]) => {
       const div = document.createElement('div');
-      div.innerHTML = `<strong>${label}:</strong> ${escapeHTML(wert)}`;
+      const labelBold = document.createElement('strong');
+      labelBold.textContent = label + ': ';
+      div.appendChild(labelBold);
+      div.appendChild(document.createTextNode(escapeHTML(wert)));
       kontaktDiv.appendChild(div);
     });
     left.appendChild(kontaktDiv);
@@ -132,73 +183,68 @@ async function ladeAnfragen() {
         const terminAuswahl = document.createElement('div');
         terminAuswahl.className = "flex flex-wrap gap-2 mb-4";
 
-        termine.forEach((t, index) => {
-          const slot = { start: t.start, end: t.end };
-          const istBelegt = terminUeberschneidet(slot, belegteOutlookSlots);
-          const startDate = new Date(t.start);
-          const endDate = new Date(t.end);
-          const label = `${startDate.toLocaleDateString('de-DE')} — ${startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} bis ${endDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+        // ✅ FIXED: Prüfung ob termine existiert
+        if (Array.isArray(termine)) {
+          termine.forEach((t, index) => {
+            const slot = { start: t.start, end: t.end };
+            const istBelegt = terminUeberschneidet(slot, belegteOutlookSlots);
+            const startDate = new Date(t.start);
+            const endDate = new Date(t.end);
+            const label = `${startDate.toLocaleDateString('de-DE')} — ${startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} bis ${endDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
 
-          const slotButton = document.createElement('button');
-          slotButton.textContent = label;
-          slotButton.className = "px-3 py-1 rounded-full border transition text-sm";
-          slotButton.dataset.index = index; // Index hinzufügen für eindeutige Identifikation
+            const slotButton = document.createElement('button');
+            slotButton.textContent = label;
+            slotButton.className = "px-3 py-1 rounded-full border transition text-sm";
+            slotButton.dataset.index = index;
 
-          const istAusgewaehlt = bestaetigterTermin &&
-            t.start === bestaetigterTermin.start &&
-            t.end === bestaetigterTermin.end;
+            const istAusgewaehlt = bestaetigterTermin &&
+              t.start === bestaetigterTermin.start &&
+              t.end === bestaetigterTermin.end;
 
-          if (istAusgewaehlt) {
-            slotButton.classList.add("bg-green-600", "text-white", "cursor-default", "border-green-600");
-            slotButton.disabled = true;
-          } else if (bestaetigterTermin) {
-            slotButton.classList.add("opacity-50", "cursor-not-allowed", "border-gray-300");
-            slotButton.disabled = true;
-          } else {
-            // Alle Slots sind klickbar - setze initiale Farbe basierend auf Verfügbarkeit
-            if (istBelegt) {
-              // 🟠 Orange für belegte Slots
-              slotButton.classList.add("bg-orange-200", "text-orange-800", "border-orange-300");
+            if (istAusgewaehlt) {
+              slotButton.classList.add("bg-green-600", "text-white", "cursor-default", "border-green-600");
+              slotButton.disabled = true;
+            } else if (bestaetigterTermin) {
+              slotButton.classList.add("opacity-50", "cursor-not-allowed", "border-gray-300");
+              slotButton.disabled = true;
             } else {
-              // ⚪ Weiß für freie Slots
-              slotButton.classList.add("border-gray-300", "hover:bg-gray-100");
+              if (istBelegt) {
+                slotButton.classList.add("bg-orange-200", "text-orange-800", "border-orange-300");
+              } else {
+                slotButton.classList.add("border-gray-300", "hover:bg-gray-100");
+              }
+
+              slotButton.addEventListener('click', () => {
+                // Reset alle anderen Buttons
+                terminAuswahl.querySelectorAll('button').forEach(btn => {
+                  if (btn === slotButton || btn.disabled) return;
+                  
+                  btn.classList.remove('ring-2', 'ring-blue-500');
+                  
+                  const btnIndex = parseInt(btn.dataset.index);
+                  const originalSlot = termine[btnIndex];
+                  const originalIstBelegt = terminUeberschneidet({start: originalSlot.start, end: originalSlot.end}, belegteOutlookSlots);
+                  
+                  btn.className = "px-3 py-1 rounded-full border transition text-sm";
+                  if (originalIstBelegt) {
+                    btn.classList.add("bg-orange-200", "text-orange-800", "border-orange-300");
+                  } else {
+                    btn.classList.add("border-gray-300", "hover:bg-gray-100");
+                  }
+                });
+                
+                slotButton.classList.add('ring-2', 'ring-blue-500');
+
+                window[`selectedSlot-${_id}`] = {
+                  datum: startDate.toISOString().split('T')[0],
+                  originalSlot: { start: t.start, end: t.end }
+                };
+              });
             }
 
-            slotButton.addEventListener('click', () => {
-              // Reset alle anderen Buttons zu ihrem ursprünglichen Zustand
-              terminAuswahl.querySelectorAll('button').forEach(btn => {
-                if (btn === slotButton || btn.disabled) return;
-                
-                // Entferne Ring
-                btn.classList.remove('ring-2', 'ring-blue-500');
-                
-                // Bestimme ursprüngliche Farbe basierend auf dem spezifischen Slot
-                const btnIndex = parseInt(btn.dataset.index);
-                const originalSlot = termine[btnIndex];
-                const originalIstBelegt = terminUeberschneidet({start: originalSlot.start, end: originalSlot.end}, belegteOutlookSlots);
-                
-                // Setze Klassen zurück
-                btn.className = "px-3 py-1 rounded-full border transition text-sm";
-                if (originalIstBelegt) {
-                  btn.classList.add("bg-orange-200", "text-orange-800", "border-orange-300");
-                } else {
-                  btn.classList.add("border-gray-300", "hover:bg-gray-100");
-                }
-              });
-              
-              // Markiere den gewählten Slot mit Ring (aber Farbe bleibt)
-              slotButton.classList.add('ring-2', 'ring-blue-500');
-
-              // Speichere gewählten Slot (Datum + Original für Email)
-              window[`selectedSlot-${_id}`] = {
-                datum: startDate.toISOString().split('T')[0], // Nur das Datum
-                originalSlot: { start: t.start, end: t.end }  // Für Email-Anzeige
-              };
-            });
-          }
-
-          terminAuswahl.appendChild(slotButton);
-        });
+            terminAuswahl.appendChild(slotButton);
+          });
+        }
 
         right.appendChild(terminAuswahl);
 
@@ -212,7 +258,6 @@ async function ladeAnfragen() {
         zeitspanneContainer.id = `zeitspanne-${_id}`;
         zeitspanneContainer.className = "grid grid-cols-2 gap-2 mb-4";
 
-        // Helper: 15-Minuten-Select + hidden time-Input (kompatibel zu deinem Code)
         function createQuarterHourTimePicker(idBase, placeholder = "") {
           const wrapper = document.createElement('div');
           wrapper.className = "flex gap-2";
@@ -237,13 +282,12 @@ async function ladeAnfragen() {
             minuteSel.appendChild(opt);
           });
 
-          // Verstecktes echtes <input type="time"> damit dein restlicher Code weiter funktioniert
           const hidden = document.createElement('input');
           hidden.type = "time";
-          hidden.id = idBase;             // gleiche ID wie bisher (z.B. "von-123")
-          hidden.name = idBase;           // ggf. anpassen, falls du ein anderes name brauchst
-          hidden.className = "hidden";    // nicht anzeigen
-          hidden.step = 900;              // 15-Minuten Schritte erzwingen/validieren
+          hidden.id = idBase;
+          hidden.name = idBase;
+          hidden.className = "hidden";
+          hidden.step = 900;
           if (placeholder) hidden.placeholder = placeholder;
 
           function sync() {
@@ -252,7 +296,6 @@ async function ladeAnfragen() {
           hourSel.addEventListener('change', sync);
           minuteSel.addEventListener('change', sync);
 
-          // Initial setzen
           sync();
 
           wrapper.appendChild(hourSel);
@@ -261,11 +304,9 @@ async function ladeAnfragen() {
           return wrapper;
         }
 
-        // "Von"
         const vonPicker = createQuarterHourTimePicker(`von-${_id}`, "Von");
         zeitspanneContainer.appendChild(vonPicker);
 
-        // "Bis"
         const bisPicker = createQuarterHourTimePicker(`bis-${_id}`, "Bis");
         zeitspanneContainer.appendChild(bisPicker);
 
@@ -286,17 +327,24 @@ async function ladeAnfragen() {
       }
     }
 
-    // 📘 Buttons
+    // 📘 Buttons - ✅ KOMPLETT OHNE innerHTML oder onclick
     const buttons = document.createElement('div');
     buttons.className = "flex flex-col gap-2";
 
     if (status !== 'erledigt') {
       if (!istTelefonanfrage) {
         // Vor-Ort: Bestätigen + Ablehnen
-        buttons.innerHTML = `
-          <button onclick="ablehnen('${_id}')" class="bg-red-500 hover:bg-red-600 text-white py-2 rounded">Anfrage ablehnen</button>
-          <button onclick="bestaetigeTermin('${_id}')" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold">Termin bestätigen</button>
-        `;
+        const ablehnenBtn = document.createElement('button');
+        ablehnenBtn.textContent = "Anfrage ablehnen";
+        ablehnenBtn.className = "bg-red-500 hover:bg-red-600 text-white py-2 rounded";
+        ablehnenBtn.addEventListener('click', () => ablehnen(_id));
+        buttons.appendChild(ablehnenBtn);
+
+        const bestaetigenBtn = document.createElement('button');
+        bestaetigenBtn.textContent = "Termin bestätigen";
+        bestaetigenBtn.className = "bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold";
+        bestaetigenBtn.addEventListener('click', () => bestaetigeTermin(_id));
+        buttons.appendChild(bestaetigenBtn);
       } else {
         // Telefon: Als bearbeitet
         const erledigtBtn = document.createElement('button');
@@ -368,7 +416,6 @@ async function bestaetigeTermin(id) {
     return;
   }
 
-  // Datum vom Slot + Zeit von manueller Eingabe kombinieren
   const startDateTime = new Date(`${selectedSlot.datum}T${vonZeit}:00`);
   const endDateTime = new Date(`${selectedSlot.datum}T${bisZeit}:00`);
 
@@ -395,13 +442,11 @@ async function bestaetigeTermin(id) {
   }
 }
 
-// ❌ Ablehnen mit Email
 async function ablehnen(id) {
   if (!confirm("Wirklich ablehnen? (Email wird versendet)")) return;
 
   const bemerkung = document.getElementById(`bemerkung-${id}`)?.value.trim() || '';
 
-  // Verwende spezifische Route für Ablehnen
   await fetch(`/anfrage/${id}/ablehnen`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
@@ -413,10 +458,53 @@ async function ablehnen(id) {
 }
 
 async function logout() {
-  await fetch('/logout', { method: 'POST' });
-  window.location.href = '/';
+  try {
+    // ✅ FIXED: Korrekte URL ohne HTTPS-Konflikt
+    const response = await fetch('/logout', { 
+      method: 'POST',
+      credentials: 'same-origin' // Wichtig für Sessions
+    });
+    
+    if (response.ok) {
+      // Erfolgreiche Weiterleitung
+      window.location.href = '/login';
+    } else {
+      console.error('Logout-Fehler:', response.status);
+      // Trotzdem weiterleiten als Fallback
+      window.location.href = '/login';
+    }
+  } catch (error) {
+    console.error('Logout-Fetch-Fehler:', error);
+    // Fallback-Weiterleitung
+    window.location.href = '/login';
+  }
 }
 
-ladeAnfragen();
-document.getElementById("filterTyp").addEventListener("change", ladeAnfragen);
-document.getElementById("filterStatus").addEventListener("change", ladeAnfragen);
+// ✅ Event Listeners einmalig beim Laden der Seite
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('📱 Admin Dashboard geladen');
+
+  // Logout Button
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', logout);
+    console.log('✅ Logout Event Listener registriert');
+  }
+
+  // Filter Event Listeners
+  const filterTyp = document.getElementById("filterTyp");
+  const filterStatus = document.getElementById("filterStatus");
+  
+  if (filterTyp) {
+    filterTyp.addEventListener("change", ladeAnfragen);
+    console.log('✅ Typ-Filter Event Listener registriert');
+  }
+  
+  if (filterStatus) {
+    filterStatus.addEventListener("change", ladeAnfragen);
+    console.log('✅ Status-Filter Event Listener registriert');
+  }
+
+  // Initial laden
+  ladeAnfragen();
+});
