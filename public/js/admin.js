@@ -1,10 +1,9 @@
 function escapeHTML(str) {
-  // ✅ FIXED: Prüfung auf undefined/null
   if (str === null || str === undefined) {
     return '';
   }
-  return String(str).replace(/[&<>"']/g, match => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  return String(str).replace(/[&<>"]|'|`/g, match => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;', '`': '&#096;'
   }[match]));
 }
 
@@ -15,26 +14,15 @@ async function ladeBelegteOutlookSlots() {
     const res = await fetch('/outlook/events');
     const data = await res.json();
 
-    // ✅ FIXED: Bessere Fehlerbehandlung für Outlook API
     console.log('📅 Outlook API Response:', data);
 
-    // Falls der Server ein Fehler-Objekt zurückgibt
-    if (!data.success && data.events) {
-      console.log('⚠️ Server-Warnung:', data.message);
+    if (!data || !data.success || !Array.isArray(data.events)) {
+      console.warn('⚠️ Keine gültigen Events vom Server:', data);
       belegteOutlookSlots = [];
       return;
     }
 
-    // Falls data direkt ein Array ist
-    const events = Array.isArray(data) ? data : (data.events || []);
-
-    if (!Array.isArray(events)) {
-      console.warn('⚠️ Events ist kein Array:', events);
-      belegteOutlookSlots = [];
-      return;
-    }
-
-    belegteOutlookSlots = events.map(ev => {
+    belegteOutlookSlots = data.events.map(ev => {
       const startRaw = ev.start?.dateTime || ev.start;
       const endRaw = ev.end?.dateTime || ev.end;
       const zone = ev.start?.timeZone || 'UTC';
@@ -49,7 +37,7 @@ async function ladeBelegteOutlookSlots() {
 
   } catch (err) {
     console.error('⚠ Outlook Slots konnten nicht geladen werden:', err);
-    belegteOutlookSlots = []; // ✅ Fallback auf leeres Array
+    belegteOutlookSlots = [];
   }
 }
 
@@ -65,6 +53,8 @@ function terminUeberschneidet(slot, belegte) {
 }
 
 async function ladeAnfragen() {
+  console.log("📋 Anfrage-Datensatz:", anfrage);
+
   const typFilter = document.getElementById('filterTyp')?.value || "alle";
   const statusFilter = document.getElementById('filterStatus')?.value || "neu";
 
@@ -91,7 +81,8 @@ async function ladeAnfragen() {
   }
 
   gefilterteAnfragen.forEach(anfrage => {
-    const { _id, beschreibung, termine, kontakt, problem, istTelefonanfrage, status, bestaetigterTermin } = anfrage;
+    const {  id, beschreibung, termine, kontakt, problem, istTelefonanfrage, status, bestaetigterTermin } = anfrage;
+    const anfrageId = id; 
 
     const dom = document.createElement('div');
     dom.className = "md:col-span-3 bg-white p-6 mb-4 shadow rounded-xl grid md:grid-cols-3 gap-6";
@@ -99,7 +90,6 @@ async function ladeAnfragen() {
     const left = document.createElement('section');
     left.className = "md:col-span-2";
 
-    // ✅ ICONS - Komplett ohne innerHTML
     const icons = document.createElement('div');
     icons.className = "mb-2 flex gap-4";
     
@@ -124,17 +114,15 @@ async function ladeAnfragen() {
     
     left.appendChild(icons);
 
-    // ✅ NACHRICHT - Ohne innerHTML
     const nachricht = document.createElement('p');
     nachricht.className = "mb-4";
     const nachrichtBold = document.createElement('strong');
     nachrichtBold.textContent = "Nachricht:";
     nachricht.appendChild(nachrichtBold);
     nachricht.appendChild(document.createElement('br'));
-    nachricht.appendChild(document.createTextNode(escapeHTML(beschreibung || '')));
+    nachricht.appendChild(document.createTextNode(escapeHTML(String(beschreibung || ''))));
     left.appendChild(nachricht);
 
-    // ✅ KONTAKT - Komplett ohne innerHTML
     const kontaktDiv = document.createElement('div');
     kontaktDiv.className = "grid md:grid-cols-2 gap-2 text-sm";
     
@@ -152,21 +140,19 @@ async function ladeAnfragen() {
       const labelBold = document.createElement('strong');
       labelBold.textContent = label + ': ';
       div.appendChild(labelBold);
-      div.appendChild(document.createTextNode(escapeHTML(wert)));
+      div.appendChild(document.createTextNode(escapeHTML(String(wert || ''))));
       kontaktDiv.appendChild(div);
     });
     left.appendChild(kontaktDiv);
 
     const right = document.createElement('section');
 
-    // 📅 Termin-Anzeige für Vor-Ort-Anfragen
     if (!istTelefonanfrage) {
       const terminLabel = document.createElement('label');
       terminLabel.className = "block mb-2 font-semibold";
       terminLabel.textContent = "1. Terminslot wählen (Datum)";
       right.appendChild(terminLabel);
 
-      // ✅ Bestätigter Termin immer anzeigen
       if (bestaetigterTermin?.start) {
         const start = new Date(bestaetigterTermin.start);
         const end = new Date(bestaetigterTermin.end);
@@ -178,12 +164,10 @@ async function ladeAnfragen() {
         right.appendChild(confirmed);
       }
 
-      // 🗓️ Termin-Auswahl nur wenn nicht erledigt
       if (status !== 'erledigt') {
         const terminAuswahl = document.createElement('div');
         terminAuswahl.className = "flex flex-wrap gap-2 mb-4";
 
-        // ✅ FIXED: Prüfung ob termine existiert
         if (Array.isArray(termine)) {
           termine.forEach((t, index) => {
             const slot = { start: t.start, end: t.end };
@@ -215,16 +199,12 @@ async function ladeAnfragen() {
               }
 
               slotButton.addEventListener('click', () => {
-                // Reset alle anderen Buttons
                 terminAuswahl.querySelectorAll('button').forEach(btn => {
                   if (btn === slotButton || btn.disabled) return;
-                  
                   btn.classList.remove('ring-2', 'ring-blue-500');
-                  
                   const btnIndex = parseInt(btn.dataset.index);
                   const originalSlot = termine[btnIndex];
                   const originalIstBelegt = terminUeberschneidet({start: originalSlot.start, end: originalSlot.end}, belegteOutlookSlots);
-                  
                   btn.className = "px-3 py-1 rounded-full border transition text-sm";
                   if (originalIstBelegt) {
                     btn.classList.add("bg-orange-200", "text-orange-800", "border-orange-300");
@@ -234,8 +214,7 @@ async function ladeAnfragen() {
                 });
                 
                 slotButton.classList.add('ring-2', 'ring-blue-500');
-
-                window[`selectedSlot-${_id}`] = {
+                window[`selectedSlot-${anfrageId}`] = {
                   datum: startDate.toISOString().split('T')[0],
                   originalSlot: { start: t.start, end: t.end }
                 };
@@ -248,14 +227,13 @@ async function ladeAnfragen() {
 
         right.appendChild(terminAuswahl);
 
-        // 🕐 Zeitspanne für gewähltes Datum
         const zeitspanneLabel = document.createElement('label');
         zeitspanneLabel.className = "block mb-2 font-semibold mt-4";
         zeitspanneLabel.textContent = "2. Zeitspanne festlegen";
         right.appendChild(zeitspanneLabel);
 
         const zeitspanneContainer = document.createElement('div');
-        zeitspanneContainer.id = `zeitspanne-${_id}`;
+        zeitspanneContainer.id = `zeitspanne-${anfrageId}`;
         zeitspanneContainer.className = "grid grid-cols-2 gap-2 mb-4";
 
         function createQuarterHourTimePicker(idBase, placeholder = "") {
@@ -304,22 +282,21 @@ async function ladeAnfragen() {
           return wrapper;
         }
 
-        const vonPicker = createQuarterHourTimePicker(`von-${_id}`, "Von");
+        const vonPicker = createQuarterHourTimePicker(`von-${anfrageId}`, "Von");
         zeitspanneContainer.appendChild(vonPicker);
 
-        const bisPicker = createQuarterHourTimePicker(`bis-${_id}`, "Bis");
+        const bisPicker = createQuarterHourTimePicker(`bis-${anfrageId}`, "Bis");
         zeitspanneContainer.appendChild(bisPicker);
 
         right.appendChild(zeitspanneContainer);
 
-        // ✏️ Bemerkung
         const bemerkungLabel = document.createElement('label');
         bemerkungLabel.className = "block mb-2 font-semibold mt-4";
         bemerkungLabel.textContent = "3. Bemerkung";
         right.appendChild(bemerkungLabel);
 
         const bemerkungInput = document.createElement('textarea');
-        bemerkungInput.id = `bemerkung-${_id}`;
+        bemerkungInput.id = `bemerkung-${anfrageId}`;
         bemerkungInput.rows = 3;
         bemerkungInput.className = "w-full border rounded p-2 mb-4";
         bemerkungInput.placeholder = "Bemerkung für Monteur";
@@ -327,31 +304,28 @@ async function ladeAnfragen() {
       }
     }
 
-    // 📘 Buttons - ✅ KOMPLETT OHNE innerHTML oder onclick
     const buttons = document.createElement('div');
     buttons.className = "flex flex-col gap-2";
 
     if (status !== 'erledigt') {
       if (!istTelefonanfrage) {
-        // Vor-Ort: Bestätigen + Ablehnen
         const ablehnenBtn = document.createElement('button');
         ablehnenBtn.textContent = "Anfrage ablehnen";
         ablehnenBtn.className = "bg-red-500 hover:bg-red-600 text-white py-2 rounded";
-        ablehnenBtn.addEventListener('click', () => ablehnen(_id));
+        ablehnenBtn.addEventListener('click', () => ablehnen(anfrageId));
         buttons.appendChild(ablehnenBtn);
 
         const bestaetigenBtn = document.createElement('button');
         bestaetigenBtn.textContent = "Termin bestätigen";
         bestaetigenBtn.className = "bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold";
-        bestaetigenBtn.addEventListener('click', () => bestaetigeTermin(_id));
+        bestaetigenBtn.addEventListener('click', () => bestaetigeTermin(anfrageId));
         buttons.appendChild(bestaetigenBtn);
       } else {
-        // Telefon: Als bearbeitet
         const erledigtBtn = document.createElement('button');
         erledigtBtn.textContent = "Als bearbeitet markieren";
         erledigtBtn.className = "bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold";
         erledigtBtn.addEventListener('click', async () => {
-          const res = await fetch(`/anfrage/${_id}`, {
+          const res = await fetch(`/anfrage/${anfrageId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nurStatusUpdate: true })
@@ -367,13 +341,12 @@ async function ladeAnfragen() {
       }
     }
 
-    // 🗒 Löschen immer erlaubt
     const loeschBtn = document.createElement('button');
     loeschBtn.textContent = "Anfrage löschen";
     loeschBtn.className = "bg-red-800 hover:bg-red-900 text-white py-2 rounded";
     loeschBtn.addEventListener('click', async () => {
       if (!confirm("Diese Anfrage wirklich löschen? (Ohne Email-Versand)")) return;
-      const res = await fetch(`/anfrage/${_id}`, { method: 'DELETE' });
+      const res = await fetch(`/anfrage/${anfrageId}`, { method: 'DELETE' });
       if (res.ok) {
         alert("Anfrage gelöscht.");
         ladeAnfragen();
@@ -387,124 +360,68 @@ async function ladeAnfragen() {
     dom.appendChild(left);
     dom.appendChild(right);
 
-    // 📅 Erstellt am
     const erstelltAm = new Date(anfrage.createdAt || anfrage.erstelltAm);
-    const erstelltInfo = document.createElement('p');
-    erstelltInfo.className = "text-xs text-gray-500 mt-2";
-    erstelltInfo.textContent = `Erstellt am: ${erstelltAm.toLocaleDateString('de-DE')} ${erstelltAm.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+        const erstelltInfo = document.createElement('p');
+    erstelltInfo.className = "text-xs text-gray-500 mt-2 col-span-3";
+    erstelltInfo.textContent = `Erstellt am: ${erstelltAm.toLocaleDateString('de-DE')} ${erstelltAm.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}`;
     dom.appendChild(erstelltInfo);
 
     container.appendChild(dom);
   });
 }
 
+async function ablehnen(id) {
+  if (!confirm("Anfrage wirklich ablehnen?")) return;
+  const res = await fetch(`/anfrage/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'abgelehnt' })
+  });
+  if (res.ok) {
+    alert("Anfrage abgelehnt.");
+    ladeAnfragen();
+  } else {
+    alert("Fehler beim Ablehnen.");
+  }
+}
+
 async function bestaetigeTermin(id) {
-  const bemerkungEl = document.getElementById(`bemerkung-${id}`);
-  const bemerkung = bemerkungEl ? bemerkungEl.value.trim() : '';
-
-  const selectedSlot = window[`selectedSlot-${id}`];
-  const vonZeit = document.getElementById(`von-${id}`)?.value;
-  const bisZeit = document.getElementById(`bis-${id}`)?.value;
-
-  if (!selectedSlot) {
-    alert("Bitte einen Terminslot auswählen.");
+  const selected = window[`selectedSlot-${id}`];
+  if (!selected) {
+    alert("Bitte zuerst einen Termin auswählen.");
     return;
   }
 
-  if (!vonZeit || !bisZeit) {
-    alert("Bitte Start- und Endzeit eingeben.");
-    return;
-  }
+  const von = document.getElementById(`von-${id}`)?.value;
+  const bis = document.getElementById(`bis-${id}`)?.value;
+  const bemerkung = document.getElementById(`bemerkung-${id}`)?.value || "";
 
-  const startDateTime = new Date(`${selectedSlot.datum}T${vonZeit}:00`);
-  const endDateTime = new Date(`${selectedSlot.datum}T${bisZeit}:00`);
-
-  if (endDateTime <= startDateTime) {
-    alert("Die Endzeit muss nach der Startzeit liegen.");
-    return;
-  }
+  const body = {
+    bestaetigterTermin: selected.originalSlot,
+    zeitspanne: { von, bis },
+    bemerkung
+  };
 
   const res = await fetch(`/anfrage/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      start: startDateTime.toISOString(),
-      end: endDateTime.toISOString(),
-      bemerkung
-    })
+    body: JSON.stringify(body)
   });
 
   if (res.ok) {
-    alert(`Termin bestätigt für ${selectedSlot.datum} von ${vonZeit} bis ${bisZeit}`);
+    alert("Termin bestätigt.");
     ladeAnfragen();
   } else {
     alert("Fehler beim Bestätigen.");
   }
 }
 
-async function ablehnen(id) {
-  if (!confirm("Wirklich ablehnen? (Email wird versendet)")) return;
+// Filter-Events anbinden
+document.getElementById('filterTyp')?.addEventListener('change', ladeAnfragen);
+document.getElementById('filterStatus')?.addEventListener('change', ladeAnfragen);
 
-  const bemerkung = document.getElementById(`bemerkung-${id}`)?.value.trim() || '';
-
-  await fetch(`/anfrage/${id}/ablehnen`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bemerkung })
-  });
-
-  alert("Anfrage abgelehnt und Email versendet.");
-  ladeAnfragen();
-}
-
-async function logout() {
-  try {
-    // ✅ FIXED: Korrekte URL ohne HTTPS-Konflikt
-    const response = await fetch('/logout', { 
-      method: 'POST',
-      credentials: 'same-origin' // Wichtig für Sessions
-    });
-    
-    if (response.ok) {
-      // Erfolgreiche Weiterleitung
-      window.location.href = '/login';
-    } else {
-      console.error('Logout-Fehler:', response.status);
-      // Trotzdem weiterleiten als Fallback
-      window.location.href = '/login';
-    }
-  } catch (error) {
-    console.error('Logout-Fetch-Fehler:', error);
-    // Fallback-Weiterleitung
-    window.location.href = '/login';
-  }
-}
-
-// ✅ Event Listeners einmalig beim Laden der Seite
+// Initial laden
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('📱 Admin Dashboard geladen');
-
-  // Logout Button
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', logout);
-    console.log('✅ Logout Event Listener registriert');
-  }
-
-  // Filter Event Listeners
-  const filterTyp = document.getElementById("filterTyp");
-  const filterStatus = document.getElementById("filterStatus");
-  
-  if (filterTyp) {
-    filterTyp.addEventListener("change", ladeAnfragen);
-    console.log('✅ Typ-Filter Event Listener registriert');
-  }
-  
-  if (filterStatus) {
-    filterStatus.addEventListener("change", ladeAnfragen);
-    console.log('✅ Status-Filter Event Listener registriert');
-  }
-
-  // Initial laden
   ladeAnfragen();
 });
+
