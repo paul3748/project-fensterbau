@@ -69,6 +69,21 @@
             "date": 1757951543097,
             "name": "D:\\projekt-root\\logs\\error-2025-09-15.log",
             "hash": "f3966276049be5693fdb3c9476239137b125020d893e5c2ed45128545243b898"
+        },
+        {
+            "date": 1758040444721,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-16.log",
+            "hash": "57ea79963453880866634d427fcceb37e2df36873854edbf0ccf924b4bbe2430"
+        },
+        {
+            "date": 1758126227741,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-17.log",
+            "hash": "f194125c7ad8ce4262466ee2b05163369b13528156fd21fc43fa4ec2ffb5ba55"
+        },
+        {
+            "date": 1758384565767,
+            "name": "D:\\projekt-root\\logs\\error-2025-09-20.log",
+            "hash": "497ab572b18017d3a069ea2a0a2e09f99f81bea7456a3b4d8cfc1de7b81563c2"
         }
     ],
     "hashType": "sha256"

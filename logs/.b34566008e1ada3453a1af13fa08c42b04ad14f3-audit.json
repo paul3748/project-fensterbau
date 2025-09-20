@@ -69,6 +69,21 @@
             "date": 1757950871237,
             "name": "D:\\projekt-root\\logs\\security-events-2025-09-15.log",
             "hash": "46f1ac4a68f307a3e9ab56fedd72dea85484818f85a6c134542e87ae03855a08"
+        },
+        {
+            "date": 1758040444727,
+            "name": "D:\\projekt-root\\logs\\security-events-2025-09-16.log",
+            "hash": "08239f5df2cc083be1cc7781d07dc0cb3df30a550a4ce2d07d8b724089bb9cfc"
+        },
+        {
+            "date": 1758126227747,
+            "name": "D:\\projekt-root\\logs\\security-events-2025-09-17.log",
+            "hash": "4b3b7123dbb63eba48316fcbab5e1f981e429f21bbb93d79d76d02c5369fb77c"
+        },
+        {
+            "date": 1758384565773,
+            "name": "D:\\projekt-root\\logs\\security-events-2025-09-20.log",
+            "hash": "be61ce218c42192bd70147afe939048adb8622b588b93aa7b45cdcbd77478d8f"
         }
     ],
     "hashType": "sha256"

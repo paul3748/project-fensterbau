@@ -6,21 +6,6 @@
     "auditLog": "D:\\projekt-root\\logs\\.ac7978b15a68efd8d61febb9f78de19a3772f205-audit.json",
     "files": [
         {
-            "date": 1756748132586,
-            "name": "D:\\projekt-root\\logs\\app-2025-09-01.log",
-            "hash": "57402d6b7cd7649d5b6e32a837df59dbe45514b9713a94118a780dd3411be32b"
-        },
-        {
-            "date": 1756835073478,
-            "name": "D:\\projekt-root\\logs\\app-2025-09-02.log",
-            "hash": "21707a89d3ce8d8a95e5ae5df30ca955c39856b4e52ddec776af54975478e65c"
-        },
-        {
-            "date": 1756915703747,
-            "name": "D:\\projekt-root\\logs\\app-2025-09-03.log",
-            "hash": "027d9083749cb0f7a8503778cf4d1fa696dad52db1167f9104521122878d6cc7"
-        },
-        {
             "date": 1757263721424,
             "name": "D:\\projekt-root\\logs\\app-2025-09-07.log",
             "hash": "6674dce3ac1908e1d5e689e516db8d21342f2ebce2530711140283d2e9282783"
@@ -54,6 +39,21 @@
             "date": 1757950899060,
             "name": "D:\\projekt-root\\logs\\app-2025-09-15.log",
             "hash": "64155771b83374ed20d067f9debf3a01f3a4e755b718899007cb92e712dae51b"
+        },
+        {
+            "date": 1758040444689,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-16.log",
+            "hash": "43a768e64bea08f57379ba40b1dafe033fd0b232f2c5f5844b8964913890cdcb"
+        },
+        {
+            "date": 1758126227635,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-17.log",
+            "hash": "ec2f9c716699363a1404b7d8a4d331b33703d0a1aa7f5a67048e53faf72bf945"
+        },
+        {
+            "date": 1758384565650,
+            "name": "D:\\projekt-root\\logs\\app-2025-09-20.log",
+            "hash": "9bdf10f4a8b5925a4db8a3f9a94199f1fde5d75f43c42a05b03423ec88785f6c"
         }
     ],
     "hashType": "sha256"
