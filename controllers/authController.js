@@ -1,5 +1,5 @@
 // controllers/authController.js (angepasste Version mit korrekter Session-Behandlung)
-const User = require('../models/User');
+const User = require('../models/user');
 const { logLoginAttempt, logSecurityEvent } = require('../utils/logger');
 
 // Brute Force Protection

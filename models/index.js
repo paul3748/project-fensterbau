@@ -1,7 +1,7 @@
 // models/index.js
 const { sequelize } = require('../config/database');
-const User = require('./User');
-const Anfrage = require('./Anfrage');
+const User = require('./user');
+const Anfrage = require('./anfrage');
 
 // Datenbank synchronisieren
 const syncDatabase = async () => {
