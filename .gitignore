@@ -1,5 +1,5 @@
 .env
 /logs
-package-lock.json
-package.json
 /node_modules
+/scripts
+debug-local-files.js
