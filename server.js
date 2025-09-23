@@ -46,8 +46,10 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
+          "'sha256-i1tPkbOgEmRzYZyS1VSnIxA4ThV+3CiI3KXyhhk0Mtk='",
           "https://cdn.tailwindcss.com",
           "https://cdn.jsdelivr.net",
+          "https://cdnjs.cloudflare.com",
           "https://cdnjs.cloudflare.com"
         ],
         styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
@@ -56,7 +58,10 @@ app.use(
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
-        frameSrc: ["'none'"],
+        frameSrc: [
+          "'self'",
+          "https://www.googletagmanager.com",
+        ],
         baseUri: ["'self'"],
         formAction: ["'self'"]
       }
