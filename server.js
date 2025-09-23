@@ -1,4 +1,4 @@
-// server.js - FIXED VERSION für Express 5 Kompatibilität
+// server.js - FIXED VERSION mit korrigierter CSP und CSRF-Behandlung
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
@@ -10,7 +10,8 @@ const { logger, logSecurityEvent } = require('./utils/logger');
 const {
   createAdvancedRateLimit,
   sqlInjectionProtection,
-  csrfProtection
+  csrfProtection,
+  generateCSRFToken // ✅ CSRF Token Generator importieren
 } = require('./middleware/security');
 
 // ✅ NEUE Sicherheits-Middleware importieren
@@ -38,7 +39,7 @@ let server;
 // ---------------------- Security Middleware ----------------------
 app.set('trust proxy', 1);
 
-// CSP mit erlaubten externen Ressourcen
+// ✅ FIXED: Erweiterte CSP mit allen benötigten Domains
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -46,29 +47,61 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
+          "'unsafe-inline'", // ✅ Für inline Skripte in HTML erlauben
           "'sha256-i1tPkbOgEmRzYZyS1VSnIxA4ThV+3CiI3KXyhhk0Mtk='",
-          "https://consent.cookiebot.com",
+          "https://consent.cookiebot.com", // ✅ Cookiebot
+          "https://www.googletagmanager.com", // ✅ Google Tag Manager
           "https://cdn.tailwindcss.com",
           "https://cdn.jsdelivr.net",
-          "https://cdnjs.cloudflare.com",
           "https://cdnjs.cloudflare.com"
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'"],
+        styleSrc: [
+          "'self'", 
+          "'unsafe-inline'", // ✅ Für inline CSS
+          "https://cdn.tailwindcss.com",
+          "https://fonts.googleapis.com"
+        ],
+        imgSrc: [
+          "'self'", 
+          "data:", 
+          "https:", 
+          "https://www.googletagmanager.com" // ✅ GTM Pixel
+        ],
+        connectSrc: [
+          "'self'",
+          // ✅ WICHTIG: Localhost für lokale API-Calls NICHT erlauben in Production
+          ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : []),
+          "https://www.google-analytics.com", // ✅ Analytics
+          "https://consent.cookiebot.com" // ✅ Cookiebot API
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com", // ✅ Google Fonts
+          "data:" // ✅ Für base64 fonts
+        ],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
         frameSrc: [
           "'self'",
           "https://www.googletagmanager.com",
+          "https://consent.cookiebot.com" // ✅ Cookiebot iFrames
+        ],
+        childSrc: [
+          "'self'",
+          "https://consent.cookiebot.com" // ✅ Cookiebot
         ],
         baseUri: ["'self'"],
-        formAction: ["'self'"]
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"], // ✅ Clickjacking Schutz
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
       }
     },
     crossOriginEmbedderPolicy: false,
-    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    hsts: { 
+      maxAge: 31536000, 
+      includeSubDomains: true, 
+      preload: true 
+    },
     referrerPolicy: { policy: "same-origin" }
   })
 );
@@ -78,12 +111,17 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  
+  // ✅ Nur in Production HSTS setzen
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   next();
 });
 
-// HTTPS Redirect
+// HTTPS Redirect (nur in Production)
 app.use((req, res, next) => {
   const forwarded = req.headers['x-forwarded-proto'];
   if (process.env.NODE_ENV === 'production' && forwarded && forwarded !== 'https') {
@@ -96,7 +134,7 @@ app.use((req, res, next) => {
 // ---------------------- Rate Limiting ----------------------
 const publicLimiter = createAdvancedRateLimit({ 
   windowMs: 15*60*1000, 
-  max: 200, // Erhöht für öffentliche Endpunkte
+  max: 200, 
   message: 'Zu viele Anfragen von dieser IP'
 });
 
@@ -115,13 +153,13 @@ const loginLimiter = createAdvancedRateLimit({
 
 const anfrageFormLimiter = createAdvancedRateLimit({ 
   windowMs: 30*60*1000, 
-  max: 10, // Erhöht für Terminanfragen
+  max: 10, 
   message: 'Zu viele Terminanfragen von dieser IP'
 });
 
 const adminApiLimiter = createAdvancedRateLimit({ 
   windowMs: 15*60*1000, 
-  max: 300, // Hoch für Admin-Bereich
+  max: 300, 
   skipSuccessfulRequests: true,
   message: 'Admin Rate Limit erreicht'
 });
@@ -179,6 +217,9 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
     app.use(createSessionMiddleware(sessionStore));
     console.log('✅ Session Store erfolgreich eingerichtet');
 
+    // ✅ CSRF Token Generator für ALLE Requests (vor anderen Middleware)
+    app.use(generateCSRFToken);
+
     // ✅ DEBUG Middleware (nur in Development)
     if (process.env.NODE_ENV === 'development') {
       app.use(debugRouteMiddleware);
@@ -196,31 +237,47 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
     app.use(routeSecurityMiddleware);
 
     // ---------------------- CSRF Token Endpoint ----------------------
-    // ✅ Bereits als öffentliche Route definiert, keine zusätzliche Authentifizierung nötig
+    // ✅ FIXED: Verbesserter CSRF-Endpunkt mit besserer Session-Behandlung
     app.get('/csrf-token', (req, res) => {
       console.log('🔐 CSRF Token Request:', {
         path: req.path,
         sessionID: req.sessionID?.substring(0, 8) + '...',
-        hasToken: !!req.session?.csrfToken
+        hasSession: !!req.session,
+        hasToken: !!req.session?.csrfToken,
+        ip: req.ip
       });
 
+      // ✅ Token sollte bereits durch generateCSRFToken Middleware gesetzt sein
       if (!req.session?.csrfToken) {
+        console.log('⚠️ Kein CSRF Token in Session - generiere neuen');
         const newToken = crypto.randomBytes(32).toString('hex');
         req.session.csrfToken = newToken;
 
         req.session.save(err => {
           if (err) {
             console.error('❌ Fehler beim Speichern der Session:', err);
-            return res.status(500).json({ success: false, message: 'Session-Fehler' });
+            return res.status(500).json({ 
+              success: false, 
+              message: 'Session-Fehler beim CSRF Token',
+              error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            });
           }
+          
           console.log('✅ Neuer CSRF Token gespeichert');
-          res.json({ csrfToken: newToken, sessionId: req.sessionID?.substring(0, 8) + '...' });
+          res.json({ 
+            success: true,
+            csrfToken: newToken, 
+            sessionId: req.sessionID?.substring(0, 8) + '...',
+            timestamp: new Date().toISOString()
+          });
         });
       } else {
-        console.log('✅ Existierender Token gefunden');
+        console.log('✅ Existierender CSRF Token gefunden');
         res.json({ 
+          success: true,
           csrfToken: String(req.session.csrfToken),
-          sessionId: req.sessionID?.substring(0, 8) + '...'
+          sessionId: req.sessionID?.substring(0, 8) + '...',
+          timestamp: new Date().toISOString()
         });
       }
     });
@@ -229,7 +286,11 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
     
     // ✅ Hauptseite - Terminanfrage-Formular (ÖFFENTLICH)
     app.get('/', (req, res) => {
-      console.log('📝 Hauptseite aufgerufen von:', req.ip);
+      console.log('📝 Hauptseite aufgerufen von:', req.ip, {
+        userAgent: req.headers['user-agent']?.substring(0, 50) + '...',
+        hasSession: !!req.session,
+        sessionID: req.sessionID?.substring(0, 8) + '...'
+      });
       res.sendFile(path.join(__dirname, 'public', 'terminanfrage.html'));
     });
 
@@ -251,7 +312,8 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
         console.log('🔐 Login-Versuch:', {
           username: req.body.username,
           ip: req.ip,
-          hasCSRF: !!req.headers['x-csrf-token'] || !!req.body._csrf
+          hasCSRF: !!req.headers['x-csrf-token'] || !!req.body._csrf,
+          sessionID: req.sessionID?.substring(0, 8) + '...'
         });
         
         const { login } = require('./controllers/authController');
@@ -261,7 +323,8 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
         console.error('❌ Login-Route Fehler:', error);
         res.status(500).json({
           success: false,
-          message: 'Login-Fehler aufgetreten'
+          message: 'Login-Fehler aufgetreten',
+          error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
       }
     });
@@ -287,23 +350,19 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       }
     });
 
-    // ✅ Admin-Dashboard (GESCHÜTZT - wird automatisch durch routeSecurityMiddleware geprüft)
+    // ✅ Admin-Dashboard (GESCHÜTZT)
     app.get('/admin', (req, res) => {
-      // Sicherheitsprüfung erfolgt bereits durch routeSecurityMiddleware
-      console.log('📊 Admin-Dashboard Zugriff:', req.session.user.username);
+      console.log('📊 Admin-Dashboard Zugriff:', {
+        username: req.session.user.username,
+        userId: req.session.user.id,
+        ip: req.ip
+      });
       res.sendFile(path.join(__dirname, 'views', 'admin.html'));
     });
 
     // ✅ API-Routen mit automatischer Sicherheitsprüfung
-    // Die routeSecurityMiddleware entscheidet automatisch, welche Endpunkte öffentlich/geschützt sind
-
-    // Outlook-Routes
     app.use('/outlook', outlookRoutes);
-
-    // Anfrage-Routes  
     app.use('/anfrage', anfrageRoutes);
-
-    // Auth-Routes
     app.use('/', authRoutes);
 
     // ✅ Health Check (ÖFFENTLICH)
@@ -311,14 +370,14 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       res.status(200).json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        version: process.env.APP_VERSION || '1.0.0'
       });
     });
 
     // ---------------------- Error Handling ----------------------
     
-    // ❌ FIXED: Express 5 kompatible Wildcard-Route
-    // Statt app.use('*', ...) verwenden wir app.all('*', ...)
+    // 404 Handler
     app.use((req, res, next) => {
       // Statische Dateien nicht loggen
       if (!req.originalUrl.match(/\.(js|css|png|jpg|ico|map|svg|woff|woff2|ttf|eot)$/)) {
@@ -343,53 +402,99 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       
       // HTML-Response für Browser
       res.status(404).send(`
-        <html>
-          <head><title>Seite nicht gefunden</title></head>
-          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-            <h1>404 - Seite nicht gefunden</h1>
-            <p>Die angeforderte Seite existiert nicht.</p>
-            <a href="/">Zurück zur Startseite</a>
+        <!DOCTYPE html>
+        <html lang="de">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Seite nicht gefunden</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+              .container { max-width: 600px; margin: 0 auto; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>404 - Seite nicht gefunden</h1>
+              <p>Die angeforderte Seite existiert nicht.</p>
+              <a href="/">← Zurück zur Startseite</a>
+            </div>
           </body>
         </html>
       `);
     });
 
-    // ✅ Global Error Handler
+    // ✅ IMPROVED: Global Error Handler mit besserer CSRF-Behandlung
     app.use((err, req, res, next) => {
       if (res.headersSent) return next(err);
       
       const errorId = crypto.randomBytes(16).toString('hex');
       
       // CSRF-Fehler speziell behandeln
-      if (err.code === 'EBADCSRFTOKEN') {
+      if (err.code === 'EBADCSRFTOKEN' || err.message?.includes('CSRF')) {
         console.log('❌ CSRF Token Fehler:', {
           errorId,
           path: req.path,
+          method: req.method,
           sessionID: req.sessionID?.substring(0, 8) + '...',
-          hasSession: !!req.session
+          hasSession: !!req.session,
+          hasToken: !!req.session?.csrfToken,
+          providedToken: req.headers['x-csrf-token']?.substring(0, 8) + '...' || req.body?._csrf?.substring(0, 8) + '...'
         });
         
-        logSecurityEvent('CSRF_TOKEN_INVALID', req, { errorId });
+        logSecurityEvent('CSRF_TOKEN_ERROR', req, { 
+          errorId,
+          errorCode: err.code,
+          errorMessage: err.message
+        });
         
         if (req.xhr || req.headers.accept?.includes('application/json')) {
           return res.status(403).json({ 
             success: false, 
-            message: 'CSRF-Token ungültig oder fehlt',
+            message: 'CSRF-Token ungültig oder fehlt. Seite neu laden und erneut versuchen.',
             code: 'CSRF_INVALID',
-            errorId
+            errorId,
+            action: 'reload_page'
           });
         }
         
         return res.redirect('/login?message=csrf_error');
       }
       
+      // Session-Fehler
+      if (err.message?.includes('session') || err.message?.includes('Session')) {
+        console.log('❌ Session Fehler:', {
+          errorId,
+          path: req.path,
+          method: req.method,
+          error: err.message
+        });
+        
+        logSecurityEvent('SESSION_ERROR', req, {
+          errorId,
+          error: err.message
+        });
+        
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Session-Fehler. Seite neu laden und erneut versuchen.',
+            code: 'SESSION_ERROR',
+            errorId
+          });
+        }
+        
+        return res.redirect('/?message=session_error');
+      }
+      
       // Allgemeine Fehler
       console.error('❌ Server Error:', { 
         errorId, 
         message: err.message, 
-        stack: err.stack,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
         path: req.path,
-        method: req.method
+        method: req.method,
+        ip: req.ip
       });
       
       logSecurityEvent('SERVER_ERROR', req, {
@@ -403,26 +508,39 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
         return res.status(500).json({ 
           success: false, 
           message: 'Interner Server-Fehler', 
-          errorId 
+          errorId,
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
       }
       
       // HTML-Response für Browser
       res.status(500).send(`
-        <html>
-          <head><title>Server Fehler</title></head>
-          <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
-            <h1>500 - Server Fehler</h1>
-            <p>Ein unerwarteter Fehler ist aufgetreten.</p>
-            <p>Fehler-ID: ${errorId}</p>
-            <a href="/">Zurück zur Startseite</a>
+        <!DOCTYPE html>
+        <html lang="de">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Server Fehler</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+              .container { max-width: 600px; margin: 0 auto; }
+              .error-id { font-size: 0.8em; color: #666; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>500 - Server Fehler</h1>
+              <p>Ein unerwarteter Fehler ist aufgetreten.</p>
+              <a href="/">← Zurück zur Startseite</a>
+              <div class="error-id">Fehler-ID: ${errorId}</div>
+            </div>
           </body>
         </html>
       `);
     });
 
     // ---------------------- Server Start ----------------------
-    server = app.listen(port, () => {
+    server = app.listen(port, '0.0.0.0', () => { // ✅ Auf alle Interfaces binden für Cloud
       console.log(`✅ Server läuft auf Port ${port}`);
       console.log(`🌐 Terminanfrage: http://localhost:${port}`);
       console.log(`🔒 Admin-Login: http://localhost:${port}/login`);
@@ -430,6 +548,9 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       console.log(`🛡️ Differenzierte Routensicherheit: Aktiv`);
       console.log(`📝 Öffentliche Endpunkte: Terminformular, CSRF, Slot-Abfrage`);
       console.log(`🔐 Geschützte Endpunkte: Admin-Dashboard, Anfrage-Management`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔐 CSRF Protection: Aktiv mit automatischer Token-Generierung`);
+      console.log(`🛡️ CSP: Erweitert für Cookiebot und GTM`);
     });
 
   } catch (err) {
@@ -446,14 +567,18 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
       if (!req.session.csrfToken) {
         req.session.csrfToken = crypto.randomBytes(32).toString('hex');
       }
-      res.json({ csrfToken: req.session.csrfToken });
+      res.json({ 
+        success: true,
+        csrfToken: req.session.csrfToken,
+        fallback: true 
+      });
     });
 
     app.use('/outlook', outlookRoutes);
     app.use('/anfrage', anfrageFormLimiter, anfrageRoutes);
     app.use('/', authRoutes);
 
-    server = app.listen(port, () => {
+    server = app.listen(port, '0.0.0.0', () => {
       console.log(`⚠️ Server läuft auf Port ${port} (Fallback-Mode)`);
       console.log(`🛡️ Routensicherheit: Reduziert (Memory-Session)`);
     });
@@ -466,6 +591,7 @@ process.on('SIGTERM', () => {
   if (server) {
     server.close(() => {
       console.log('✅ Server stopped');
+      sequelize?.close?.();
       process.exit(0);
     });
   }
@@ -476,6 +602,7 @@ process.on('SIGINT', () => {
   if (server) {
     server.close(() => {
       console.log('✅ Server stopped');
+      sequelize?.close?.();
       process.exit(0);
     });
   }
@@ -483,13 +610,19 @@ process.on('SIGINT', () => {
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
-  logSecurityEvent('UNCAUGHT_EXCEPTION', { ip: 'system' }, { error: err.message, stack: err.stack });
+  logSecurityEvent('UNCAUGHT_EXCEPTION', { ip: 'system' }, { 
+    error: err.message, 
+    stack: err.stack 
+  });
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  logSecurityEvent('UNHANDLED_REJECTION', { ip: 'system' }, { reason, promise: promise.toString() });
+  logSecurityEvent('UNHANDLED_REJECTION', { ip: 'system' }, { 
+    reason: reason?.toString?.() || String(reason), 
+    promise: promise.toString() 
+  });
 });
 
 module.exports = app;
