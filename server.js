@@ -47,6 +47,7 @@ app.use(
         scriptSrc: [
           "'self'",
           "'sha256-i1tPkbOgEmRzYZyS1VSnIxA4ThV+3CiI3KXyhhk0Mtk='",
+          "https://consent.cookiebot.com",
           "https://cdn.tailwindcss.com",
           "https://cdn.jsdelivr.net",
           "https://cdnjs.cloudflare.com",
