@@ -53,13 +53,15 @@ app.use(
           "https://www.googletagmanager.com", // ✅ Google Tag Manager
           "https://cdn.tailwindcss.com",
           "https://cdn.jsdelivr.net",
-          "https://cdnjs.cloudflare.com"
+          "https://cdnjs.cloudflare.com",
+          "https://consentcdn.cookiebot.com"
         ],
         styleSrc: [
           "'self'", 
           "'unsafe-inline'", // ✅ Für inline CSS
           "https://cdn.tailwindcss.com",
-          "https://fonts.googleapis.com"
+          "https://fonts.googleapis.com",
+          "https://consentcdn.cookiebot.com"
         ],
         imgSrc: [
           "'self'", 
@@ -72,7 +74,8 @@ app.use(
           // ✅ WICHTIG: Localhost für lokale API-Calls NICHT erlauben in Production
           ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : []),
           "https://www.google-analytics.com", // ✅ Analytics
-          "https://consent.cookiebot.com" // ✅ Cookiebot API
+          "https://consent.cookiebot.com", // ✅ Cookiebot API
+          "https://consentcdn.cookiebot.com"
         ],
         fontSrc: [
           "'self'",
@@ -84,11 +87,13 @@ app.use(
         frameSrc: [
           "'self'",
           "https://www.googletagmanager.com",
-          "https://consent.cookiebot.com" // ✅ Cookiebot iFrames
+          "https://consent.cookiebot.com", // ✅ Cookiebot iFrames
+          "https://consentcdn.cookiebot.com"
         ],
         childSrc: [
           "'self'",
-          "https://consent.cookiebot.com" // ✅ Cookiebot
+          "https://consent.cookiebot.com", // ✅ Cookiebot
+          "https://consentcdn.cookiebot.com"
         ],
         baseUri: ["'self'"],
         formAction: ["'self'"],
