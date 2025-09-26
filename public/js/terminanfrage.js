@@ -510,9 +510,10 @@ function zeigeSlots() {
   Object.entries(tageMap).forEach(([datum, slots]) => {
     const date = new Date(datum);
     const tagDiv = document.createElement('div');
-    tagDiv.className = 'tag-container';
+    tagDiv.className = 'day-column'; // ✅ Korrekte Klasse für Tag-Container
     
     const tagHeader = document.createElement('h4');
+    tagHeader.className = 'day-header'; // ✅ Korrekte Klasse für Tag-Header
     tagHeader.textContent = date.toLocaleDateString('de-DE', {
       weekday: 'long',
       day: '2-digit',
@@ -520,13 +521,10 @@ function zeigeSlots() {
     });
     tagDiv.appendChild(tagHeader);
     
-    const slotsDiv = document.createElement('div');
-    slotsDiv.className = 'slots-container';
-    
     slots.forEach(slot => {
       const slotBtn = document.createElement('button');
       slotBtn.type = 'button';
-      slotBtn.className = 'slot-btn';
+      slotBtn.className = 'slot frei'; // ✅ FIXED: Verwende 'slot' statt 'slot-btn'
       
       const startTime = new Date(slot.start).toLocaleTimeString('de-DE', {
         hour: '2-digit',
@@ -549,15 +547,15 @@ function zeigeSlots() {
       }
       
       if (istTelefonanfrage) {
+        slotBtn.classList.remove('frei');
+        slotBtn.classList.add('gesperrt');
         slotBtn.disabled = true;
-        slotBtn.classList.add('disabled');
       }
       
       slotBtn.addEventListener('click', () => toggleTerminauswahl(slot));
-      slotsDiv.appendChild(slotBtn);
+      tagDiv.appendChild(slotBtn);
     });
     
-    tagDiv.appendChild(slotsDiv);
     container.appendChild(tagDiv);
   });
 }
