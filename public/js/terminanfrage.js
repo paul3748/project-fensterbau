@@ -1,8 +1,7 @@
-// terminanfrage.js - FIXED VERSION für Cloud-Server (CSP-konform)
+// terminanfrage.js - FIXED VERSION mit vollständigen Kalenderwochen
 
 // ✅ FIXED: Dynamische Base URL statt hardcodierte localhost
 const getBaseUrl = () => {
-  // Verwende die aktuelle Domain statt localhost
   return window.location.origin;
 };
 
@@ -14,6 +13,7 @@ console.log('🌐 Terminanfrage Script geladen für:', BASE_URL);
 let aktuelleWoche = 0;
 let ausgewählteTermine = [];
 let alleSlots = [];
+let alleEvents = []; // ✅ NEU: Belegte Events separat speichern
 let csrfToken = null;
 let istTelefonanfrage = false;
 
@@ -24,7 +24,7 @@ async function getCsrfToken() {
     
     const response = await fetch(`${BASE_URL}/csrf-token`, {
       method: 'GET',
-      credentials: 'same-origin', // ✅ Wichtig für Session-Cookies
+      credentials: 'same-origin',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
@@ -49,7 +49,6 @@ async function getCsrfToken() {
   } catch (error) {
     console.error('❌ Fehler beim Abrufen des CSRF Tokens:', error);
     
-    // User-freundliche Fehlermeldung
     const errorMsg = error.message.includes('Failed to fetch') ? 
       'Verbindung zum Server fehlgeschlagen. Bitte Internetverbindung prüfen.' :
       `Fehler beim Laden der Sicherheitsdaten: ${error.message}`;
@@ -58,27 +57,23 @@ async function getCsrfToken() {
   }
 }
 
-// ✅ IMPROVED: Fetch mit automatischem CSRF Token
 async function fetchWithCSRF(url, options = {}) {
   try {
-    // Token holen falls nicht vorhanden
     if (!csrfToken) {
       await getCsrfToken();
     }
 
-    // Request-Optionen vorbereiten
     const fetchOptions = {
-      credentials: 'same-origin', // ✅ Session-Cookies mitschicken
+      credentials: 'same-origin',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken, // ✅ CSRF Token im Header
+        'X-CSRF-Token': csrfToken,
         ...options.headers
       },
       ...options
     };
 
-    // Bei POST/PUT auch im Body (falls Forms verwendet werden)
     if (options.body && typeof options.body === 'string') {
       try {
         const bodyData = JSON.parse(options.body);
@@ -104,9 +99,8 @@ async function fetchWithCSRF(url, options = {}) {
       
       if (errorData.code === 'CSRF_INVALID' || errorData.code === 'CSRF_MISSING') {
         console.log('🔄 CSRF Token ungültig - hole neuen Token...');
-        csrfToken = null; // Reset Token
+        csrfToken = null;
         
-        // Einen Versuch mit neuem Token
         await getCsrfToken();
         fetchOptions.headers['X-CSRF-Token'] = csrfToken;
         
@@ -133,12 +127,115 @@ async function fetchWithCSRF(url, options = {}) {
   }
 }
 
-// ✅ IMPROVED: Freie Slots laden mit besserer Fehlerbehandlung
+// ✅ NEUE FUNKTION: Vollständige Kalenderwochen-Slots generieren
+function generateVollständigeWochenSlots() {
+  const slots = [];
+  const heute = new Date();
+
+  const zeitbloecke = [
+    { startStunde: 7, startMinute: 30, endStunde: 10, endMinute: 30 },
+    { startStunde: 10, startMinute: 30, endStunde: 13, endMinute: 0 },
+    { startStunde: 13, startMinute: 0, endStunde: 15, endMinute: 0 },
+  ];
+
+  // ✅ FIXED: Für 4 komplette Wochen ab nächstem Montag
+  for (let woche = 0; woche < 4; woche++) {
+    // Berechne den Montag der gewünschten Woche
+    const montag = getMontagDerWoche(woche);
+    
+    // Generiere Slots für Montag bis Freitag dieser Woche
+    for (let tag = 0; tag < 5; tag++) { // 0=Montag, 4=Freitag
+      const datum = new Date(montag);
+      datum.setDate(montag.getDate() + tag);
+      
+      // ✅ Slots nur für zukünftige Tage generieren
+      if (datum <= heute) continue;
+
+      for (const block of zeitbloecke) {
+        const start = new Date(datum);
+        start.setHours(block.startStunde, block.startMinute, 0, 0);
+        const end = new Date(datum);
+        end.setHours(block.endStunde, block.endMinute, 0, 0);
+        
+        slots.push({ 
+          start: start.toISOString(), 
+          end: end.toISOString(),
+          woche: woche,
+          tag: tag // 0=Montag, 1=Dienstag, etc.
+        });
+      }
+    }
+  }
+  
+  console.log(`📅 Generiert: ${slots.length} Slots für 4 vollständige Kalenderwochen`);
+  return slots;
+}
+
+// ✅ NEUE FUNKTION: Montag der gewünschten Woche berechnen
+function getMontagDerWoche(wocheOffset = 0) {
+  const heute = new Date();
+  const heutigerWochentag = heute.getDay(); // 0=Sonntag, 1=Montag, ..., 6=Samstag
+  
+  // Berechne wie viele Tage bis zum nächsten Montag
+  let tageZumNächstenMontag;
+  if (heutigerWochentag === 0) { // Sonntag
+    tageZumNächstenMontag = 1;
+  } else if (heutigerWochentag === 1) { // Montag
+    tageZumNächstenMontag = 7; // Nächster Montag (nicht heute)
+  } else { // Dienstag bis Samstag
+    tageZumNächstenMontag = 8 - heutigerWochentag;
+  }
+  
+  const nächsterMontag = new Date(heute);
+  nächsterMontag.setDate(heute.getDate() + tageZumNächstenMontag);
+  nächsterMontag.setHours(0, 0, 0, 0);
+  
+  // Füge Wochen-Offset hinzu
+  const zielMontag = new Date(nächsterMontag);
+  zielMontag.setDate(nächsterMontag.getDate() + (wocheOffset * 7));
+  
+  return zielMontag;
+}
+
+// ✅ IMPROVED: Slot-Status bestimmen (frei/belegt/gesperrt)
+function getSlotStatus(slot) {
+  // Bei Telefonanfrage sind alle Slots gesperrt
+  if (istTelefonanfrage) {
+    return 'gesperrt';
+  }
+  
+  // Prüfe ob Slot bereits ausgewählt
+  const slotKey = `${slot.start}_${slot.end}`;
+  const istAusgewählt = ausgewählteTermine.some(t => `${t.start}_${t.end}` === slotKey);
+  if (istAusgewählt) {
+    return 'ausgewählt';
+  }
+  
+  // Prüfe ob Slot durch Events belegt ist
+  const slotStart = new Date(slot.start).getTime();
+  const slotEnd = new Date(slot.end).getTime();
+  
+  let überschneidungen = 0;
+  for (const event of alleEvents) {
+    const eventStart = new Date(event.start).getTime();
+    const eventEnd = new Date(event.end).getTime();
+    
+    // Überschneidung prüfen
+    if (eventEnd > slotStart && eventStart < slotEnd) {
+      überschneidungen++;
+    }
+  }
+  
+  // Slot ist belegt wenn 2 oder mehr Termine überschneiden
+  return überschneidungen >= 2 ? 'belegt' : 'frei';
+}
+
+// ✅ IMPROVED: Slots laden mit separater Event-Speicherung
 async function ladeFreieSlots() {
   const ladeIndikator = document.querySelector('.tage-grid');
   
   try {
-    console.log('📅 Lade freie Slots...');
+    console.log('📅 Lade Slots und Events...');
     
     if (ladeIndikator) {
       ladeIndikator.innerHTML = '<div class="loading-spinner">⏳ Lade verfügbare Termine...</div>';
@@ -154,19 +251,22 @@ async function ladeFreieSlots() {
 
     const data = await response.json();
     
-    if (!data.freieSlots) {
+    if (!data.freieSlots || !data.alleEvents) {
       throw new Error('Keine Termindaten vom Server erhalten');
     }
 
-    alleSlots = data.freieSlots;
-    console.log(`✅ ${alleSlots.length} freie Slots geladen`);
+    // ✅ FIXED: Verwende lokale Slot-Generierung für vollständige Wochen
+    alleSlots = generateVollständigeWochenSlots();
+    alleEvents = data.alleEvents; // Belegte Events separat speichern
+
+    console.log(`✅ ${alleSlots.length} Slots generiert, ${alleEvents.length} Events empfangen`);
 
     // UI aktualisieren
     aktualisiereWochenAnzeige();
     zeigeSlots();
 
   } catch (error) {
-    console.error('Fehler beim Abrufen der freien Slots:', error);
+    console.error('Fehler beim Abrufen der Slots:', error);
     
     if (ladeIndikator) {
       ladeIndikator.innerHTML = `
@@ -178,25 +278,165 @@ async function ladeFreieSlots() {
       `;
     }
     
-    // User-freundliche Fehlermeldung
     zeigeFehlermeldung('Termine konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
   }
 }
 
-// ✅ Formulardaten sammeln und validieren
+// ✅ IMPROVED: Wochenanzeige mit korrekten Datumsbereichen
+function aktualisiereWochenAnzeige() {
+  const montag = getMontagDerWoche(aktuelleWoche);
+  const freitag = new Date(montag);
+  freitag.setDate(montag.getDate() + 4); // +4 für Freitag
+
+  const wochenDiv = document.getElementById('currentWeek');
+  if (wochenDiv) {
+    const formatter = new Intl.DateTimeFormat('de-DE', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    
+    wochenDiv.textContent = `${formatter.format(montag)} - ${formatter.format(freitag)}`;
+  }
+
+  // Navigation buttons
+  const prevBtn = document.getElementById('prevWeek');
+  const nextBtn = document.getElementById('nextWeek');
+  
+  if (prevBtn) prevBtn.disabled = aktuelleWoche <= 0;
+  if (nextBtn) nextBtn.disabled = aktuelleWoche >= 3;
+}
+
+// ✅ COMPLETELY REWRITTEN: Slots anzeigen mit vollständiger Wochenstruktur
+function zeigeSlots() {
+  const container = document.querySelector('.tage-grid');
+  if (!container || !alleSlots.length) return;
+
+  // Slots für aktuelle Woche filtern
+  const wochenSlots = alleSlots.filter(slot => slot.woche === aktuelleWoche);
+  
+  console.log(`📊 Zeige Woche ${aktuelleWoche}: ${wochenSlots.length} Slots`);
+
+  if (wochenSlots.length === 0) {
+    container.innerHTML = '<div class="no-slots">Keine Termine in dieser Woche verfügbar</div>';
+    return;
+  }
+
+  // ✅ FIXED: Slots nach Tagen strukturiert gruppieren
+  const tageStruktur = {
+    0: { name: 'Montag', slots: [] },
+    1: { name: 'Dienstag', slots: [] },
+    2: { name: 'Mittwoch', slots: [] },
+    3: { name: 'Donnerstag', slots: [] },
+    4: { name: 'Freitag', slots: [] }
+  };
+
+  // Slots in Tage-Struktur einsortieren
+  wochenSlots.forEach(slot => {
+    if (tageStruktur[slot.tag]) {
+      tageStruktur[slot.tag].slots.push(slot);
+    }
+  });
+
+  // HTML generieren
+  container.innerHTML = '';
+  
+  // ✅ Für jeden Wochentag eine Spalte erstellen
+  Object.entries(tageStruktur).forEach(([tagIndex, tagData]) => {
+    const tagDiv = document.createElement('div');
+    tagDiv.className = 'day-column';
+    
+    // Tag-Header mit Datum
+    const montag = getMontagDerWoche(aktuelleWoche);
+    const tagDatum = new Date(montag);
+    tagDatum.setDate(montag.getDate() + parseInt(tagIndex));
+    
+    const tagHeader = document.createElement('h4');
+    tagHeader.className = 'day-header';
+    tagHeader.textContent = `${tagData.name}\n${tagDatum.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit'
+    })}`;
+    tagDiv.appendChild(tagHeader);
+    
+    // ✅ Slots für diesen Tag anzeigen (auch belegte!)
+    if (tagData.slots.length === 0) {
+      const noSlotsDiv = document.createElement('div');
+      noSlotsDiv.className = 'no-slots-day';
+      noSlotsDiv.textContent = 'Keine Termine';
+      tagDiv.appendChild(noSlotsDiv);
+    } else {
+      tagData.slots.forEach(slot => {
+        const slotBtn = document.createElement('button');
+        slotBtn.type = 'button';
+        slotBtn.className = 'slot';
+        
+        const startTime = new Date(slot.start).toLocaleTimeString('de-DE', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        const endTime = new Date(slot.end).toLocaleTimeString('de-DE', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        slotBtn.textContent = `${startTime} - ${endTime}`;
+        
+        // ✅ Status des Slots bestimmen und CSS-Klassen setzen
+        const status = getSlotStatus(slot);
+        
+        switch (status) {
+          case 'frei':
+            slotBtn.classList.add('frei');
+            slotBtn.disabled = false;
+            slotBtn.setAttribute('aria-pressed', 'false');
+            break;
+            
+          case 'ausgewählt':
+            slotBtn.classList.add('frei', 'selected');
+            slotBtn.disabled = false;
+            slotBtn.setAttribute('aria-pressed', 'true');
+            break;
+            
+          case 'belegt':
+            slotBtn.classList.add('belegt');
+            slotBtn.disabled = true;
+            slotBtn.title = 'Dieser Termin ist bereits belegt';
+            break;
+            
+          case 'gesperrt':
+            slotBtn.classList.add('gesperrt');
+            slotBtn.disabled = true;
+            slotBtn.title = 'Für Telefonanfragen nicht verfügbar';
+            break;
+        }
+        
+        // Click-Handler nur für freie/ausgewählte Slots
+        if (status === 'frei' || status === 'ausgewählt') {
+          slotBtn.addEventListener('click', () => toggleTerminauswahl(slot));
+        }
+        
+        tagDiv.appendChild(slotBtn);
+      });
+    }
+    
+    container.appendChild(tagDiv);
+  });
+
+  console.log(`✅ Woche ${aktuelleWoche} angezeigt mit vollständiger Tagesstruktur`);
+}
+
+// Formularfunktionen (unverändert)
 function sammelFormulardaten() {
   const formData = {
-    // Anliegen/Problem
     problem: {
       Fenster: parseInt(document.getElementById('Fenster').value) || 0,
       Tueren: parseInt(document.getElementById('Tueren').value) || 0,
       Rolladen: parseInt(document.getElementById('Rolladen').value) || 0
     },
     
-    // Beschreibung
     beschreibung: document.getElementById('beschreibung').value.trim(),
     
-    // Kontaktdaten
     kontakt: {
       nachname: document.getElementById('nachname').value.trim(),
       vorname: document.getElementById('vorname').value.trim(),
@@ -209,33 +449,27 @@ function sammelFormulardaten() {
       telefon: document.getElementById('telefon').value.trim()
     },
     
-    // Terminart und -details
     istTelefonanfrage: istTelefonanfrage,
     termine: istTelefonanfrage ? [] : ausgewählteTermine,
     
-    // Datenschutz
     datenschutz: document.getElementById('datenschutz').checked
   };
 
   return formData;
 }
 
-// ✅ Formularvalidierung
 function validiereFormular(formData) {
   const fehler = [];
 
-  // Problem-Validierung
   const problemSumme = Object.values(formData.problem).reduce((sum, val) => sum + val, 0);
   if (problemSumme === 0) {
     fehler.push('Bitte wählen Sie mindestens ein Problem aus (Fenster, Türen oder Rollläden).');
   }
 
-  // Beschreibung
   if (!formData.beschreibung || formData.beschreibung.length < 10) {
     fehler.push('Bitte beschreiben Sie Ihr Anliegen (mindestens 10 Zeichen).');
   }
 
-  // Pflichtfelder Kontakt
   if (!formData.kontakt.nachname) fehler.push('Nachname ist erforderlich.');
   if (!formData.kontakt.vorname) fehler.push('Vorname ist erforderlich.');
   if (!formData.kontakt.adresse) fehler.push('Adresse ist erforderlich.');
@@ -244,24 +478,20 @@ function validiereFormular(formData) {
   if (!formData.kontakt.email) fehler.push('E-Mail ist erforderlich.');
   if (!formData.kontakt.telefon) fehler.push('Telefon ist erforderlich.');
 
-  // E-Mail Format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (formData.kontakt.email && !emailRegex.test(formData.kontakt.email)) {
     fehler.push('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
   }
 
-  // PLZ Format (5 Ziffern)
   const plzRegex = /^\d{5}$/;
   if (formData.kontakt.plz && !plzRegex.test(formData.kontakt.plz)) {
     fehler.push('PLZ muss aus 5 Ziffern bestehen.');
   }
 
-  // Termin-Validierung für Vor-Ort-Termine
   if (!formData.istTelefonanfrage && formData.termine.length !== 3) {
     fehler.push('Bitte wählen Sie genau 3 Terminvorschläge aus.');
   }
 
-  // Datenschutz
   if (!formData.datenschutz) {
     fehler.push('Bitte akzeptieren Sie die Datenschutzerklärung.');
   }
@@ -269,7 +499,6 @@ function validiereFormular(formData) {
   return fehler;
 }
 
-// ✅ IMPROVED: Formular absenden mit besserer Fehlerbehandlung
 async function sendeFormular(event) {
   event.preventDefault();
   
@@ -280,7 +509,6 @@ async function sendeFormular(event) {
   try {
     console.log('📤 Formular wird gesendet...');
 
-    // Loading State
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = 'Wird gesendet...';
@@ -291,7 +519,6 @@ async function sendeFormular(event) {
       formOverlay.setAttribute('aria-hidden', 'false');
     }
 
-    // Daten sammeln und validieren
     const formData = sammelFormulardaten();
     const validationErrors = validiereFormular(formData);
 
@@ -299,7 +526,6 @@ async function sendeFormular(event) {
       throw new Error(validationErrors.join('\n'));
     }
 
-    // An Server senden
     const response = await fetchWithCSRF(`${BASE_URL}/anfrage`, {
       method: 'POST',
       body: JSON.stringify(formData)
@@ -316,7 +542,6 @@ async function sendeFormular(event) {
       throw new Error('Unerwartete Server-Antwort');
     }
 
-    // Erfolg anzeigen
     console.log('✅ Formular erfolgreich gesendet');
     
     if (statusDiv) {
@@ -326,12 +551,10 @@ async function sendeFormular(event) {
       statusDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // Formular zurücksetzen
     document.getElementById('terminFormular').reset();
     ausgewählteTermine = [];
     aktualisiereTerminauswahl();
 
-    // Success-Tracking (falls Analytics vorhanden)
     if (typeof gtag === 'function') {
       gtag('event', 'form_submit', {
         'event_category': 'engagement',
@@ -342,7 +565,6 @@ async function sendeFormular(event) {
   } catch (error) {
     console.error('❌ Fehler beim Senden:', error);
     
-    // Fehler anzeigen
     if (statusDiv) {
       statusDiv.className = 'alert error';
       statusDiv.textContent = error.message || 'Fehler beim Senden der Anfrage. Bitte versuchen Sie es erneut.';
@@ -353,7 +575,6 @@ async function sendeFormular(event) {
     zeigeFehlermeldung(error.message);
 
   } finally {
-    // Loading State zurücksetzen
     if (submitButton) {
       submitButton.disabled = false;
       submitButton.textContent = 'Absenden';
@@ -366,7 +587,7 @@ async function sendeFormular(event) {
   }
 }
 
-// ✅ Hilfsfunktionen für UI-Updates
+// Hilfsfunktionen
 function zeigeFehlermeldung(message) {
   const meldungDiv = document.getElementById('meldung');
   if (meldungDiv) {
@@ -376,28 +597,6 @@ function zeigeFehlermeldung(message) {
   }
 }
 
-function zeigeLadezustand(isLoading, message = '') {
-  const form = document.getElementById('terminFormular');
-  const overlay = document.querySelector('.form-overlay');
-  
-  if (overlay) {
-    overlay.style.display = isLoading ? 'flex' : 'none';
-    overlay.setAttribute('aria-hidden', isLoading ? 'false' : 'true');
-  }
-  
-  if (form) {
-    const inputs = form.querySelectorAll('input, textarea, button, select');
-    inputs.forEach(input => {
-      input.disabled = isLoading;
-    });
-  }
-  
-  if (message && isLoading) {
-    console.log('⏳', message);
-  }
-}
-
-// ✅ Terminauswahl-Funktionen
 function toggleTerminauswahl(slot) {
   if (istTelefonanfrage) return;
 
@@ -405,13 +604,10 @@ function toggleTerminauswahl(slot) {
   const existingIndex = ausgewählteTermine.findIndex(t => `${t.start}_${t.end}` === slotKey);
 
   if (existingIndex >= 0) {
-    // Termin entfernen
     ausgewählteTermine.splice(existingIndex, 1);
   } else if (ausgewählteTermine.length < 3) {
-    // Termin hinzufügen (maximal 3)
     ausgewählteTermine.push(slot);
   } else {
-    // Bereits 3 Termine ausgewählt
     zeigeFehlermeldung('Sie können maximal 3 Termine auswählen. Entfernen Sie zuerst einen anderen Termin.');
     return;
   }
@@ -420,7 +616,6 @@ function toggleTerminauswahl(slot) {
 }
 
 function aktualisiereTerminauswahl() {
-  // Auswahlmeldung aktualisieren
   const meldungDiv = document.getElementById('auswahlMeldung');
   if (meldungDiv) {
     const anzahl = ausgewählteTermine.length;
@@ -434,137 +629,18 @@ function aktualisiereTerminauswahl() {
       meldungDiv.textContent = `${anzahl}/3 Termine ausgewählt - wählen Sie noch ${3-anzahl} weitere.`;
       meldungDiv.className = 'form-warning';
     } else {
-      meldungDiv.textContent = '✅ 3 Termine ausgewählt';
+      meldungDiv.textContent = '3 Termine ausgewählt';
       meldungDiv.className = 'form-success';
     }
   }
 
-  // Slots visuell aktualisieren
   zeigeSlots();
 }
 
-// ✅ Wochennavigation
-function aktualisiereWochenAnzeige() {
-  const heute = new Date();
-  const startDatum = new Date(heute);
-  startDatum.setDate(heute.getDate() + (aktuelleWoche * 7) + 1);
-  
-  const endDatum = new Date(startDatum);
-  endDatum.setDate(startDatum.getDate() + 6);
-
-  const wochenDiv = document.getElementById('currentWeek');
-  if (wochenDiv) {
-    const formatter = new Intl.DateTimeFormat('de-DE', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
-    });
-    
-    wochenDiv.textContent = `${formatter.format(startDatum)} - ${formatter.format(endDatum)}`;
-  }
-
-  // Navigation buttons
-  const prevBtn = document.getElementById('prevWeek');
-  const nextBtn = document.getElementById('nextWeek');
-  
-  if (prevBtn) prevBtn.disabled = aktuelleWoche <= 0;
-  if (nextBtn) nextBtn.disabled = aktuelleWoche >= 3; // Max 4 Wochen im Voraus
-}
-
-// ✅ Slots anzeigen
-function zeigeSlots() {
-  const container = document.querySelector('.tage-grid');
-  if (!container || !alleSlots.length) return;
-
-  // Slots für aktuelle Woche filtern
-  const heute = new Date();
-  const wochenStart = new Date(heute);
-  wochenStart.setDate(heute.getDate() + (aktuelleWoche * 7) + 1);
-  wochenStart.setHours(0, 0, 0, 0);
-  
-  const wochenEnde = new Date(wochenStart);
-  wochenEnde.setDate(wochenStart.getDate() + 6);
-  wochenEnde.setHours(23, 59, 59, 999);
-
-  const wochenSlots = alleSlots.filter(slot => {
-    const slotDate = new Date(slot.start);
-    return slotDate >= wochenStart && slotDate <= wochenEnde;
-  });
-
-  if (wochenSlots.length === 0) {
-    container.innerHTML = '<div class="no-slots">Keine verfügbaren Termine in dieser Woche</div>';
-    return;
-  }
-
-  // Slots nach Tagen gruppieren
-  const tageMap = {};
-  wochenSlots.forEach(slot => {
-    const datum = new Date(slot.start).toDateString();
-    if (!tageMap[datum]) tageMap[datum] = [];
-    tageMap[datum].push(slot);
-  });
-
-  // HTML generieren
-  container.innerHTML = '';
-  
-  Object.entries(tageMap).forEach(([datum, slots]) => {
-    const date = new Date(datum);
-    const tagDiv = document.createElement('div');
-    tagDiv.className = 'day-column'; // ✅ Korrekte Klasse für Tag-Container
-    
-    const tagHeader = document.createElement('h4');
-    tagHeader.className = 'day-header'; // ✅ Korrekte Klasse für Tag-Header
-    tagHeader.textContent = date.toLocaleDateString('de-DE', {
-      weekday: 'long',
-      day: '2-digit',
-      month: '2-digit'
-    });
-    tagDiv.appendChild(tagHeader);
-    
-    slots.forEach(slot => {
-      const slotBtn = document.createElement('button');
-      slotBtn.type = 'button';
-      slotBtn.className = 'slot frei'; // ✅ FIXED: Verwende 'slot' statt 'slot-btn'
-      
-      const startTime = new Date(slot.start).toLocaleTimeString('de-DE', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      const endTime = new Date(slot.end).toLocaleTimeString('de-DE', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-      slotBtn.textContent = `${startTime} - ${endTime}`;
-      
-      // Status prüfen
-      const slotKey = `${slot.start}_${slot.end}`;
-      const isSelected = ausgewählteTermine.some(t => `${t.start}_${t.end}` === slotKey);
-      
-      if (isSelected) {
-        slotBtn.classList.add('selected');
-        slotBtn.setAttribute('aria-pressed', 'true');
-      }
-      
-      if (istTelefonanfrage) {
-        slotBtn.classList.remove('frei');
-        slotBtn.classList.add('gesperrt');
-        slotBtn.disabled = true;
-      }
-      
-      slotBtn.addEventListener('click', () => toggleTerminauswahl(slot));
-      tagDiv.appendChild(slotBtn);
-    });
-    
-    container.appendChild(tagDiv);
-  });
-}
-
-// ✅ Event Listeners und Initialisierung
+// Event Listeners und Initialisierung
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🚀 Terminanfrage Script initialisiert');
 
-  // CSRF Token vorab laden
   try {
     await getCsrfToken();
     console.log('✅ CSRF Token vorgeladen');
@@ -572,7 +648,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.error('⚠ CSRF Token Vorladung fehlgeschlagen:', error.message);
   }
 
-  // Anfrageart Toggle
   const anfrageartRadios = document.querySelectorAll('input[name="anfrageart"]');
   anfrageartRadios.forEach(radio => {
     radio.addEventListener('change', function() {
@@ -589,7 +664,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   });
 
-  // Wochennavigation
   const prevBtn = document.getElementById('prevWeek');
   const nextBtn = document.getElementById('nextWeek');
   
@@ -613,19 +687,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 
-  // Formular Event Listener
   const form = document.getElementById('terminFormular');
   if (form) {
     form.addEventListener('submit', sendeFormular);
   }
 
-  // Slots laden
   await ladeFreieSlots();
   
   console.log('✅ Terminanfrage Script vollständig geladen');
 });
 
-// ✅ Error Recovery - Bei Netzwerkfehlern
+// Error Recovery
 window.addEventListener('online', () => {
   console.log('🌐 Verbindung wiederhergestellt');
   const errorMessages = document.querySelectorAll('.error-message');

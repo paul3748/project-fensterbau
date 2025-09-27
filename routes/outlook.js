@@ -1,4 +1,5 @@
-// routes/outlook.js - UPDATED mit differenzierter Routensicherheit
+// routes/outlook.js - FIXED VERSION mit vollständigen Kalenderwochen
+
 const express = require('express');
 const router = express.Router();
 const { ConfidentialClientApplication } = require('@azure/msal-node');
@@ -6,21 +7,9 @@ const axios = require('axios');
 const { DateTime } = require('luxon');
 const { logger, logSecurityEvent } = require('../utils/logger');
 
-console.log('✅ Outlook-Router geladen mit Sicherheits-Updates');
+console.log('✅ Outlook-Router geladen mit Kalenderwochen-Updates');
 
-// Debug-Middleware nur für Development
-if (process.env.NODE_ENV === 'development') {
-  router.use((req, res, next) => { 
-    console.log('[DEBUG Outlook]', req.method, req.path, {
-      hasAuth: !!req.session?.user,
-      userRole: req.session?.user?.role,
-      ip: req.ip
-    }); 
-    next(); 
-  });
-}
-
-// MSAL-Konfiguration
+// MSAL-Konfiguration (unverändert)
 const msalConfig = {
   auth: {
     clientId: process.env.CLIENT_ID,
@@ -31,7 +20,7 @@ const msalConfig = {
 
 const cca = new ConfidentialClientApplication(msalConfig);
 
-// Token abrufen mit Error Handling
+// Token abrufen (unverändert)
 async function getToken() {
   try {
     const result = await cca.acquireTokenByClientCredential({
@@ -49,8 +38,34 @@ async function getToken() {
   }
 }
 
-// Zeit-Slots generieren (wie im Frontend)
-function generateZeitslots() {
+// ✅ NEUE FUNKTION: Montag der gewünschten Woche berechnen
+function getMontagDerWoche(wocheOffset = 0) {
+  const heute = new Date();
+  const heutigerWochentag = heute.getDay(); // 0=Sonntag, 1=Montag, ..., 6=Samstag
+  
+  // Berechne wie viele Tage bis zum nächsten Montag
+  let tageZumNächstenMontag;
+  if (heutigerWochentag === 0) { // Sonntag
+    tageZumNächstenMontag = 1;
+  } else if (heutigerWochentag === 1) { // Montag
+    tageZumNächstenMontag = 7; // Nächster Montag (nicht heute)
+  } else { // Dienstag bis Samstag
+    tageZumNächstenMontag = 8 - heutigerWochentag;
+  }
+  
+  const nächsterMontag = new Date(heute);
+  nächsterMontag.setDate(heute.getDate() + tageZumNächstenMontag);
+  nächsterMontag.setHours(0, 0, 0, 0);
+  
+  // Füge Wochen-Offset hinzu
+  const zielMontag = new Date(nächsterMontag);
+  zielMontag.setDate(nächsterMontag.getDate() + (wocheOffset * 7));
+  
+  return zielMontag;
+}
+
+// ✅ NEUE FUNKTION: Vollständige Kalenderwochen-Slots generieren
+function generateVollständigeWochenSlots() {
   const slots = [];
   const heute = new Date();
 
@@ -60,26 +75,41 @@ function generateZeitslots() {
     { startStunde: 13, startMinute: 0, endStunde: 15, endMinute: 0 },
   ];
 
-  for (let tag = 1; tag < 28; tag++) {
-    const datum = new Date(heute);
-    datum.setHours(0,0,0,0);
-    datum.setDate(datum.getDate() + tag);
-    const wochentag = datum.getDay();
-    if (wochentag === 0 || wochentag === 6) continue; // Wochenende überspringen
-
-    for (const block of zeitbloecke) {
-      const start = new Date(datum);
-      start.setHours(block.startStunde, block.startMinute, 0, 0);
-      const end = new Date(datum);
-      end.setHours(block.endStunde, block.endMinute, 0, 0);
-      slots.push({ start: start.toISOString(), end: end.toISOString() });
+  // ✅ FIXED: Für 4 komplette Wochen ab nächstem Montag
+  for (let woche = 0; woche < 4; woche++) {
+    // Berechne den Montag der gewünschten Woche
+    const montag = getMontagDerWoche(woche);
+    
+    console.log(`📅 Generiere Woche ${woche}: Montag ${montag.toLocaleDateString('de-DE')}`);
+    
+    // Generiere Slots für Montag bis Freitag dieser Woche
+    for (let tag = 0; tag < 5; tag++) { // 0=Montag, 4=Freitag
+      const datum = new Date(montag);
+      datum.setDate(montag.getDate() + tag);
+      
+      // ✅ WICHTIG: Alle Slots generieren, auch vergangene (Frontend entscheidet über Verfügbarkeit)
+      for (const block of zeitbloecke) {
+        const start = new Date(datum);
+        start.setHours(block.startStunde, block.startMinute, 0, 0);
+        const end = new Date(datum);
+        end.setHours(block.endStunde, block.endMinute, 0, 0);
+        
+        slots.push({ 
+          start: start.toISOString(), 
+          end: end.toISOString(),
+          woche: woche,
+          tag: tag, // 0=Montag, 1=Dienstag, etc.
+          isPast: start <= heute // ✅ Vergangene Slots markieren
+        });
+      }
     }
   }
+  
+  console.log(`📅 Backend: ${slots.length} Slots für 4 vollständige Kalenderwochen generiert`);
   return slots;
 }
 
-// ✅ ÖFFENTLICHER ENDPUNKT - Freie Slots für Terminanfrage-Formular
-// Wird von terminanfrage.js verwendet - MUSS öffentlich zugänglich bleiben
+// ✅ AKTUALISIERTE Route: Freie Slots mit vollständigen Kalenderwochen
 router.get('/freie-slots', async (req, res) => {
   try {
     console.log('📅 Öffentliche Slot-Abfrage von:', req.ip, {
@@ -89,11 +119,12 @@ router.get('/freie-slots', async (req, res) => {
 
     const token = await getToken();
 
+    // Events vom Outlook-Kalender holen
     const response = await axios.get(
       `https://graph.microsoft.com/v1.0/users/${process.env.OUTLOOK_USER_EMAIL}/calendar/events`,
       {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 Sekunden Timeout
+        timeout: 10000
       }
     );
 
@@ -104,41 +135,49 @@ router.get('/freie-slots', async (req, res) => {
       subject: event.subject || 'Unbekannt'
     }));
 
-    const alleSlots = generateZeitslots();
+    // ✅ FIXED: Verwende neue Slot-Generation für vollständige Wochen
+    const alleSlots = generateVollständigeWochenSlots();
     
-    console.log(`📊 Slot-Generierung: ${alleSlots.length} Slots, ${belegteEvents.length} Events`);
+    console.log(`📊 Backend Slot-Generierung: ${alleSlots.length} Slots, ${belegteEvents.length} Events`);
     
-    // Filter mit maxOverlap = 1 (bei 2 Terminen im Slot wird blockiert)
+    // ✅ Filtere nur für "freieSlots" Rückgabe (für Kompatibilität)
     const { filterFreieSlots } = require('../utils/kalenderUtils');
-    const freieSlots = filterFreieSlots(alleSlots, belegteEvents, 1);
+    const nurFreieSlots = filterFreieSlots(alleSlots, belegteEvents, 1);
     
-    console.log(`✅ Gefiltert auf ${freieSlots.length} freie Slots (max 1 Termin pro Slot)`);
+    console.log(`✅ Gefiltert auf ${nurFreieSlots.length} freie Slots (max 2 Termine pro Slot)`);
 
     // Erfolgreiche Abfrage loggen
     logger.info('Öffentliche Slot-Abfrage erfolgreich', {
       ip: req.ip,
       totalSlots: alleSlots.length,
       totalEvents: belegteEvents.length,
-      freeSlots: freieSlots.length,
+      freeSlots: nurFreieSlots.length,
       userAgent: req.headers['user-agent']
     });
 
-    // Beide Datensätze zurückgeben
+    // ✅ UPDATED: Sowohl alle Slots als auch Events zurückgeben
     res.json({
-      freieSlots: freieSlots,
+      // Für Frontend: Alle Slots (inklusive belegter) mit Wochenstruktur
+      alleSlots: alleSlots,
+      
+      // Für Kompatibilität: Nur freie Slots
+      freieSlots: nurFreieSlots,
+      
+      // Alle Events für Belegungsprüfung
       alleEvents: belegteEvents,
+      
       debug: {
         totalSlots: alleSlots.length,
         totalEvents: belegteEvents.length,
-        freeSlots: freieSlots.length,
-        generatedAt: new Date().toISOString()
+        freeSlots: nurFreieSlots.length,
+        generatedAt: new Date().toISOString(),
+        wochenStruktur: 'Vollständige Kalenderwochen ab nächstem Montag'
       }
     });
     
   } catch (err) {
     console.error("❌ Fehler bei öffentlicher Slot-Abfrage:", err.message);
     
-    // Sicherheitsereignis loggen bei wiederholten Fehlern
     logSecurityEvent('OUTLOOK_API_ERROR', req, {
       error: err.message,
       endpoint: '/freie-slots'
