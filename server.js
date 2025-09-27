@@ -296,8 +296,17 @@ app.use('/views', express.static(path.join(__dirname,'views'), {
         hasSession: !!req.session,
         sessionID: req.sessionID?.substring(0, 8) + '...'
       });
-      res.sendFile(path.join(__dirname, 'public', 'terminanfrage.html'));
+      res.sendFile(path.join(__dirname, 'public', 'home.html'));
     });
+
+    app.get('/:page', (req, res, next) => {
+  const file = path.join(__dirname, 'public', `${req.params.page}.html`);
+  res.sendFile(file, (err) => {
+    if (err) {
+      next(); // Falls Datei nicht existiert -> 404 Handler
+    }
+  });
+  });
 
     // ✅ Login-Bereich (ÖFFENTLICH)
     app.get('/login', (req, res) => {
