@@ -56,24 +56,38 @@ app.use(
           "https://cdnjs.cloudflare.com",
           "https://consentcdn.cookiebot.com"
         ],
+        scriptSrcElem: [
+          "'self'",
+          "'sha256-i1tPkbOgEmRzYZyS1VSnIxA4ThV+3CiI3KXyhhk0Mtk='",
+          "https://consent.cookiebot.com",
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com",
+          "https://cdn.tailwindcss.com",
+          "https://cdn.jsdelivr.net",
+          "https://cdnjs.cloudflare.com",
+          "https://consentcdn.cookiebot.com"
+        ],
         styleSrc: [
           "'self'", 
           "'unsafe-inline'", // ✅ Für inline CSS
           "https://cdn.tailwindcss.com",
           "https://fonts.googleapis.com",
+          "https://www.googletagmanager.com", 
           "https://consentcdn.cookiebot.com"
         ],
         imgSrc: [
           "'self'", 
           "data:", 
           "https:", 
-          "https://www.googletagmanager.com" // ✅ GTM Pixel
+          "https://www.googletagmanager.com", // ✅ GTM Pixel
+          "https://www.google-analytics.com"
         ],
         connectSrc: [
           "'self'",
           // ✅ WICHTIG: Localhost für lokale API-Calls NICHT erlauben in Production
           ...(process.env.NODE_ENV === 'development' ? ["http://localhost:3000"] : []),
           "https://www.google-analytics.com", // ✅ Analytics
+          "https://www.googletagmanager.com",
           "https://consent.cookiebot.com", // ✅ Cookiebot API
           "https://consentcdn.cookiebot.com"
         ],
