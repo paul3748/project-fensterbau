@@ -89,7 +89,8 @@ app.use(
           "https://www.google-analytics.com", // ✅ Analytics
           "https://www.googletagmanager.com",
           "https://consent.cookiebot.com", // ✅ Cookiebot API
-          "https://consentcdn.cookiebot.com"
+          "https://consentcdn.cookiebot.com",
+          "https://region1.google-analytics.com"
         ],
         fontSrc: [
           "'self'",
