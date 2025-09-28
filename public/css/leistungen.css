@@ -30,17 +30,33 @@
    Hero Section
    ========================= */
 .hero-section {
-  padding: 4rem 0 6rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  margin: -2rem -1rem 0;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding: 6rem 0;
+  text-align: center;
+  position: relative;
+  background-color: #f3f6f9; /* dezente Hauptfarbe */
+
+  /* Overlay für sanften unteren Übergang */
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100px; /* Höhe des Fades, anpassen nach Bedarf */
+  background: linear-gradient(to bottom, rgba(243,246,249,0) 0%, #f7f8fa 100%);
+  pointer-events: none; /* Overlay stört keine Klicks */
 }
 
 .hero-content {
-  text-align: center;
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 1rem;
+  position: relative; /* sorgt dafür, dass Inhalt über Overlay bleibt */
 }
 
 .hero-badge {
@@ -81,6 +97,7 @@
   margin-top: 3rem;
 }
 
+
 .stat-item {
   display: flex;
   align-items: center;
@@ -118,6 +135,7 @@
   color: var(--color-text-light);
   font-size: 0.9rem;
 }
+
 
 /* =========================
    Section Headers
@@ -368,9 +386,13 @@
 }
 
 .benefit-icon {
-  font-size: 3rem;
-  margin-bottom: 1.5rem;
+  display: block;           /* Damit margin-bottom wirkt */
+  width: 60px;              /* Größe des Icons, anpassen nach Bedarf */
+  height: 60px;             /* Optional, damit es quadratisch bleibt */
+  margin: 0 auto 1.5rem;    /* zentriert und Abstand nach unten */
+  object-fit: contain;      /* Damit das Icon nicht verzerrt wird */
 }
+
 
 .benefit-card h3 {
   font-size: 1.3rem;
@@ -389,12 +411,14 @@
    CTA Section
    ========================= */
 .cta-section {
-  padding: 6rem 0;
   background: linear-gradient(135deg, var(--color-primary) 0%, #3d8bcd 100%);
-  color: white;
-  margin: 0 -1rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  color: #fff;
+  padding: 6rem 1rem;
+  margin: 4rem auto;       /* Abstand nach außen + Zentrierung */
+  border-radius: 1.5rem;   /* sichtbare runde Ecken */
+  text-align: center;
+  max-width: 1200px;       /* Begrenzung, damit die Rundung sichtbar wird */
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15); /* optional, hebt die Box hervor */
 }
 
 .cta-content {
@@ -404,10 +428,18 @@
 }
 
 .cta-icon {
-  font-size: 4rem;
-  margin-bottom: 1.5rem;
-  opacity: 0.9;
+  display: block;           /* Damit margin wirkt */
+  width: 80px;              /* Größer als Benefit-Icons für Aufmerksamkeit */
+  height: 80px;             /* Optional quadratisch */
+  margin: 0 auto 1.5rem;    /* Zentriert und Abstand nach unten */
+  object-fit: contain;      /* Vermeidet Verzerrung */
+  transition: transform 0.3s ease; /* Für sanfte Hover-Effekte */
 }
+
+.cta-icon:hover {
+  transform: scale(1.1);   /* Leichtes Vergrößern beim Hover für Interaktivität */
+}
+
 
 .cta-content h2 {
   font-size: 2.5rem;
