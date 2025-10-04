@@ -54,7 +54,8 @@ app.use(
           "https://cdn.tailwindcss.com",
           "https://cdn.jsdelivr.net",
           "https://cdnjs.cloudflare.com",
-          "https://consentcdn.cookiebot.com"
+          "https://consentcdn.cookiebot.com",
+          "https://region1.analytics.google.com"
         ],
         scriptSrcElem: [
           "'self'",
@@ -90,6 +91,7 @@ app.use(
           "https://www.googletagmanager.com",
           "https://consent.cookiebot.com", // ✅ Cookiebot API
           "https://consentcdn.cookiebot.com",
+          "https://region1.analytics.google.com",
           "https://region1.google-analytics.com"
         ],
         fontSrc: [
